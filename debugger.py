@@ -18,6 +18,8 @@ class CorruptedData(ALHProtocolException):
 
 class ALHRandomError(Exception): pass
 
+class CRCError(Exception): pass
+
 """Almost-like-HTTP protocol handler
 """
 class ALHProtocol:
@@ -72,33 +74,127 @@ class ALHProtocol:
 
 		return self._send_with_error(req)
 
-class ALHProtocolRemote(ALHProtocol):
-	def _recover_remote(self, addr):
-		self.post("radio/noderesetparser", "", "%d" % addr)
+class ALHProtocolProxy():
+	def __init__(self, alhproxy, addr):
+		self.alhproxy = alhproxy
+		self.addr = addr
 
-	def _check_for_junk_state(self, addr, message):
+	def _recover_remote(self):
+		self.alhproxy.post("radio/noderesetparser", "", "%d" % (self.addr,))
+
+	def _check_for_junk_state(self, message):
 		g = re.search("NODES:Node ([0-9]+) parser is in junk state\r\nERROR", message)
 		if g:
-			assert(int(g.group(1)) == addr)
-			self._recover_remote(addr)
+			assert(int(g.group(1)) == self.addr)
+			self._recover_remote()
 
-	def get_remote(self, addr, resource, *args):
+	def get(self, resource, *args):
 		try:
-			return self.get("nodes", "%d/%s?" % (addr, resource), *args)
+			return self.alhproxy.get("nodes", "%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError, e:
-			self._check_for_junk_state(addr, str(e))
+			self._check_for_junk_state(str(e))
 			raise
 
-	def post_remote(self, addr, resource, data, *args):
+	def post(self, resource, data, *args):
 		try:
-			return self.post("nodes", data, "%d/%s?" % (addr, resource), *args)
+			return self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError, e:
-			self._check_for_junk_state(addr, str(e))
+			self._check_for_junk_state(str(e))
 			raise
+
+class ALHSpectrumSensingExperiment:
+	def __init__(self, alh, time_start, time_duration, 
+			device, config, ch_start, ch_step, ch_stop, slot_id):
+
+		self.alh = alh
+
+		self.time_start = time_start
+		self.time_duration = time_duration
+		self.device = device
+		self.config = config
+		self.ch_start = ch_start
+		self.ch_step = ch_step
+		self.ch_stop = ch_stop
+		self.slot_id = slot_id
+
+	def program(self):
+		self.alh.post("sensing/freeUpDataSlot", "1", "id=%d" % (self.slot_id))
+		self.alh.post("sensing/program",
+			"in %d sec for %d sec with dev %d conf %d ch %d:%d:%d to slot %d" % (
+				self.time_start,
+				self.time_duration,
+				self.device,
+				self.config,
+				self.ch_start,
+				self.ch_step,
+				self.ch_stop,
+				self.slot_id))
+
+	def is_complete(self):
+		resp = self.alh.get("sensing/slotInformation", "id=%d" % (self.slot_id,))
+		return "status=COMPLETE" in resp
+
+	def _decode(self, data):
+		sweep_len = len(range(self.ch_start, self.ch_stop, self.ch_step))
+
+		sweeps = []
+		sweep = []
+
+		for n in xrange(0, len(data), 2):
+			datum = data[n:n+2]
+			if len(datum) != 2:
+				continue
+
+			dbm = struct.unpack("h", datum)[0]*1e-2
+			sweep.append(dbm)
+
+			if(len(sweep) >= sweep_len):
+				sweeps.append(sweep)
+				sweep = []
+
+		if(sweep):
+			sweeps.append(sweep)
+
+		return sweeps
+
+	def retrieve(self):
+		resp = self.alh.get("sensing/slotInformation", "id=%d" % (self.slot_id,))
+		assert("status=COMPLETE" in resp)
+
+		g = re.search("size=([0-9]+)", resp)
+		total_size = int(g.group(1))
+
+		p = 0
+		max_read_size = 512
+		data = ""
+		while p < total_size:
+			chunk_size = min(max_read_size, total_size - p)
+
+			chunk_data_crc = self.alh.get("sensing/slotDataBinary", "id=%d&start=%d&size=%d" % (
+				self.slot_id, p, chunk_size))
+
+			chunk_data = chunk_data_crc[:-4]
+			
+			their_crc = struct.unpack("i", chunk_data_crc[-4:])[0]
+			our_crc = binascii.crc32(chunk_data)
+
+			if(their_crc != our_crc):
+				raise CRCError
+
+			data += chunk_data
+
+			p += max_read_size
+
+		return self._decode(data)
 
 def main():
-	f = serial.Serial("/dev/ttyUSB0", 115200, timeout=10)
-	vesna = ALHProtocolRemote(f)
+	f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
+	coor = ALHProtocol(f)
+
+	nde7 = ALHProtocolProxy(coor, 7)
+
+	print coor.post("prog/firstcall", "")
+	print nde7.post("prog/firstcall", "")
 
 #	node8req = ""
 #	node7req = ""
@@ -110,58 +206,41 @@ def main():
 #	vesna.post_remote(8, "generator/program", node8req)
 #	vesna.post_remote(7, "generator/program", node7req)
 
-	print vesna.get_remote(7, "sensing/deviceConfigList")
-	print vesna.get_remote(8, "generator/deviceConfigList")
+	print nde7.get("sensing/deviceConfigList")
 
-	vesna.post_remote(8, "generator/program", 
-			"in 5 sec for 10 sec with dev 0 conf 0 channel 20 power 0")
+	#vesna.post_remote(8, "generator/program", 
+	#		"in 5 sec for 10 sec with dev 0 conf 0 channel 40 power 0\r\n"
+	#		"in 15 sec for 10 sec with dev 0 conf 0 channel 80 power 0\r\n"
+	#		"in 25 sec for 10 sec with dev 0 conf 0 channel 120 power 0\r\n"
+	#		"in 35 sec for 10 sec with dev 0 conf 0 channel 160 power 0\r\n"
+	#		"in 45 sec for 10 sec with dev 0 conf 0 channel 200 power 0\r\n"
+	#		)
 
-	vesna.post_remote(7, "sensing/freeUpDataSlot", "1", "id=1")
-	vesna.post_remote(7, "sensing/program",
-			"in 5 sec for 20 sec with dev 0 conf 1 ch 0:1:20 to slot 1")
-	
+	exp = ALHSpectrumSensingExperiment(nde7,
+			time_start = 2,
+			time_duration = 60,
+			device = 0,
+			config = 0,
+			ch_start = 0,
+			ch_step = 1,
+			ch_stop = 255,
+			slot_id = 3)
 
-	resp = ""
-	while "status=COMPLETE" not in resp:
+	exp.program()
+
+	while not exp.is_complete():
+		print "waiting..."
 		time.sleep(1)
-		resp = vesna.get_remote(7, "sensing/slotInformation", "id=1")
 
-	g = re.search("size=([0-9]+)", resp)
-	resp = ""
-	size = int(g.group(1))
-	p = 0
-	while p < size:
-		chunk = min(512, size - p)
+	print "experiment is finished. retrieving data."
 
-		data = vesna.get_remote(7, "sensing/slotDataBinary", 
-				"id=1&start=%d&size=%d" % (p, chunk))
-	
-		d = data[:-4]
-		crc = struct.unpack("i", data[-4:])[0]
-		crc2 = binascii.crc32(d)
-		print crc, crc2
-		if crc != crc2:
-			print "ERROR"
+	sweeps = exp.retrieve()
 
-		resp += d
-
-		p += 512
-
-	f = open("raw", "w")
-	f.write(resp)
-
-	f = open("out", "w")
-	ch = 0
-	t = 0
-	for n in xrange(0, len(resp), 2):
-		dbm = struct.unpack("h", resp[n:n+2])[0]*1e-2
-
-		f.write("%f\t%f\t%f\n" % (ch, t, dbm))
-
-		ch += 1
-		if(ch == 20):
-			ch = 0
-			t += 1
-			f.write("\n")
+	outf = open("out", "w")
+	for sweep in sweeps:
+		for dbm in sweep:
+			outf.write("%f\n" % (dbm,))
+		outf.write("\n")
+	outf.close()
 
 main()
