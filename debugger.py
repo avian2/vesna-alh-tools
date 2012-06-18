@@ -73,14 +73,14 @@ class ALHProtocol:
 		return self._send_with_error(req)
 
 class ALHProtocolRemote(ALHProtocol):
-	def _recover(self, addr):
+	def _recover_remote(self, addr):
 		self.post("radio/noderesetparser", "", "%d" % addr)
 
 	def _check_for_junk_state(self, addr, message):
 		g = re.search("NODES:Node ([0-9]+) parser is in junk state\r\nERROR", message)
 		if g:
 			assert(int(g.group(1)) == addr)
-			self._recover(addr)
+			self._recover_remote(addr)
 
 	def get_remote(self, addr, resource, *args):
 		try:
