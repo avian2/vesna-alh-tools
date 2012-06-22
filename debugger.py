@@ -187,14 +187,44 @@ class ALHSpectrumSensingExperiment:
 
 		return self._decode(data)
 
+def reprogram(alh, firmware, slot_id):
+	print alh.post("prog/nextFirmwareSlotId", "%d" % (slot_id,))
+	print alh.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
+	print alh.post("prog/nextEraseSlotId", "%d" % (slot_id,))
+
+	chunk_size = 512
+	total_size = len(firmware)
+	chunk_num = 0
+	p = 0
+	while p < total_size:
+		chunk_data = struct.pack(">i", chunk_num) + firmware[p:p+chunk_size]
+		if len(chunk_data) != 516:
+			chunk_data += "\xff" * (516 - len(chunk_data))
+			
+		chunk_data_crc = binascii.crc32(chunk_data)
+
+		chunk = chunk_data + struct.pack(">i", chunk_data_crc)
+
+		print alh.post("firmware", chunk)
+
+		p += chunk_size
+		chunk_num += 1
+
+	print alh.post("prog/nextFirmwareCrc", "%d" % (binascii.crc32(firmware),))
+
 def main():
-	f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
+	f = serial.Serial("/dev/ttyUSB0", 115200, timeout=10)
 	coor = ALHProtocol(f)
 
 	nde7 = ALHProtocolProxy(coor, 7)
 
 	print coor.post("prog/firstcall", "")
 	print nde7.post("prog/firstcall", "")
+
+	#firmware = open("/home/avian/dev/vesna-drivers/Applications/Logatec/NodeSpectrumSensor/logatec_node_app.bin").read()
+	firmware = open("ttt").read()
+	reprogram(nde7, firmware, 10)
+	return
 
 #	node8req = ""
 #	node7req = ""
@@ -226,13 +256,15 @@ def main():
 			ch_stop = 255,
 			slot_id = 3)
 
-	exp.program()
+	#exp.program()
 
 	while not exp.is_complete():
 		print "waiting..."
 		time.sleep(1)
 
 	print "experiment is finished. retrieving data."
+
+	return
 
 	sweeps = exp.retrieve()
 
