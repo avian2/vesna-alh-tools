@@ -187,7 +187,7 @@ class ALHSpectrumSensingExperiment:
 
 		return self._decode(data)
 
-def reprogram(alh, firmware, slot_id):
+def upload_firmware(alh, firmware, slot_id):
 	print alh.post("prog/nextFirmwareSlotId", "%d" % (slot_id,))
 	print alh.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
 	print alh.post("prog/nextEraseSlotId", "%d" % (slot_id,))
@@ -212,18 +212,23 @@ def reprogram(alh, firmware, slot_id):
 
 	print alh.post("prog/nextFirmwareCrc", "%d" % (binascii.crc32(firmware),))
 
+def reboot_firmware(alh, slot_id):
+	print alh.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
+	print alh.post("prog/doRestart", "1")
+
 def main():
-	f = serial.Serial("/dev/ttyUSB0", 115200, timeout=10)
+	f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
 	coor = ALHProtocol(f)
 
-	nde7 = ALHProtocolProxy(coor, 7)
+	nde7 = ALHProtocolProxy(coor, 1)
 
 	print coor.post("prog/firstcall", "")
 	print nde7.post("prog/firstcall", "")
 
-	#firmware = open("/home/avian/dev/vesna-drivers/Applications/Logatec/NodeSpectrumSensor/logatec_node_app.bin").read()
-	firmware = open("ttt").read()
-	reprogram(nde7, firmware, 10)
+	firmware = open("/home/avian/dev/vesna-drivers/Applications/Logatec/NodeSpectrumSensor/logatec_node_app.bin").read()
+	#firmware = open("ttt").read()
+	upload_firmware(nde7, firmware, 13)
+	reboot_firmware(nde7, 13)
 	return
 
 #	node8req = ""
