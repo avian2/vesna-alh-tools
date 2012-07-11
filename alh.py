@@ -29,6 +29,9 @@ class ALHTerminal(ALHProtocol):
 	def __init__(self, f):
 		self.f = f
 
+	def _log(self, msg):
+		pass
+
 	def _send(self, data):
 		self.f.write(data)
 
@@ -56,6 +59,8 @@ class ALHTerminal(ALHProtocol):
 		# wrong.
 		if "error" in resp.lower() or "warning" in resp.lower():
 			raise ALHRandomError(resp)
+
+		self._log(resp)
 		
 		return resp
 
