@@ -1,9 +1,11 @@
+import alh
 import binascii
 import re
 import serial
+import string
 import struct
+import sys
 import time
-import alh
 
 class ALHSpectrumSensingExperiment:
 	def __init__(self, alh, time_start, time_duration, 
@@ -67,16 +69,31 @@ class ALHSpectrumSensingExperiment:
 		g = re.search("size=([0-9]+)", resp)
 		total_size = int(g.group(1))
 
+		#print "total size:", total_size
+
 		p = 0
 		max_read_size = 512
 		data = ""
+
 		while p < total_size:
 			chunk_size = min(max_read_size, total_size - p)
+
+			#if p < total_size - chunk_size*2:
+			#	p += max_read_size
+			#	continue
+
+			#print "start", p
+			#print "size", chunk_size
 
 			chunk_data_crc = self.alh.get("sensing/slotDataBinary", "id=%d&start=%d&size=%d" % (
 				self.slot_id, p, chunk_size))
 
+			#print len(chunk_data_crc)
+			#print repr(chunk_data_crc)
+
 			chunk_data = chunk_data_crc[:-4]
+
+			#print "len", len(chunk_data)
 			
 			their_crc = struct.unpack("i", chunk_data_crc[-4:])[0]
 			our_crc = binascii.crc32(chunk_data)
@@ -91,9 +108,9 @@ class ALHSpectrumSensingExperiment:
 		return self._decode(data)
 
 def upload_firmware(alh, firmware, slot_id):
-	print alh.post("prog/nextFirmwareSlotId", "%d" % (slot_id,))
-	print alh.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
-	print alh.post("prog/nextEraseSlotId", "%d" % (slot_id,))
+	alh.post("prog/nextFirmwareSlotId", "%d" % (slot_id,))
+	alh.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
+	alh.post("prog/nextEraseSlotId", "%d" % (slot_id,))
 
 	chunk_size = 512
 	total_size = len(firmware)
@@ -108,32 +125,55 @@ def upload_firmware(alh, firmware, slot_id):
 
 		chunk = chunk_data + struct.pack(">i", chunk_data_crc)
 
-		print alh.post("firmware", chunk)
+		alh.post("firmware", chunk)
 
 		p += chunk_size
 		chunk_num += 1
 
-	print alh.post("prog/nextFirmwareCrc", "%d" % (binascii.crc32(firmware),))
+	alh.post("prog/nextFirmwareCrc", "%d" % (binascii.crc32(firmware),))
 
 def reboot_firmware(alh, slot_id):
-	print alh.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
-	print alh.post("prog/doRestart", "1")
+	alh.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
+	alh.post("prog/doRestart", "1")
 
-def main():
-	#f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
-	#coor = ALHProtocol(f)
-	coor = alh.ALHWeb("http://194.249.231.26:9002/communicator")
+def log(msg):
+	if all(c in string.printable for c in msg):
+		print msg.decode("ascii", "ignore")
 
-	nde7 = alh.ALHProxy(coor, 43)
+def test_terminal_reprogram():
+	f = serial.Serial("/dev/ttyUSB0", 115200, timeout=10)
+	coor = alh.ALHTerminal(f)
+	nde7 = alh.ALHProxy(coor, 1)
 
-	print coor.post("prog/firstcall", "1")
-	print nde7.post("prog/firstcall", "1")
+	coor._log = log
 
-	#firmware = open("/home/avian/dev/vesna-drivers/Applications/Logatec/NodeSpectrumSensor/logatec_node_app.bin").read()
-	#firmware = open("ttt").read()
-	#upload_firmware(nde7, firmware, 13)
-	#reboot_firmware(nde7, 13)
+	coor.post("prog/firstcall", "1")
+	nde7.post("prog/firstcall", "1")
+
+	firmware = open("/home/avian/dev/vesna-drivers/Applications/Logatec/NodeSpectrumSensor/logatec_node_app.bin").read()
+	upload_firmware(nde7, firmware, 1)
+	reboot_firmware(nde7, 1)
+
+def test_spectrum_sensing():
+
+	f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
+	coor = alh.ALHTerminal(f)
+	nde7 = alh.ALHProxy(coor, 1)
+
+	#coor = alh.ALHWeb("http://194.249.231.26:9002/communicator")
+	#nde7 = alh.ALHProxy(coor, 43)
+
+	coor._log = log
+
+	#a = nde7.get("sensing/slotDataBinary?id=3&start=0&size=512")
+	#print len(a)
+	#print repr(a)
 	#return
+
+	coor.post("prog/firstcall", "1")
+	nde7.post("prog/firstcall", "1")
+
+	nde7.get("sensing/deviceConfigList")
 
 #	node8req = ""
 #	node7req = ""
@@ -145,7 +185,6 @@ def main():
 #	vesna.post_remote(8, "generator/program", node8req)
 #	vesna.post_remote(7, "generator/program", node7req)
 
-	print nde7.get("sensing/deviceConfigList")
 
 
 	#vesna.post_remote(8, "generator/program", 
@@ -182,5 +221,10 @@ def main():
 			outf.write("%f\n" % (dbm,))
 		outf.write("\n")
 	outf.close()
+
+def main():
+	#test_terminal_reprogram()
+	test_spectrum_sensing()
+	return
 
 main()

@@ -61,7 +61,6 @@ class ALHTerminal(ALHProtocol):
 			raise ALHRandomError(resp)
 
 		self._log(resp)
-		
 		return resp
 
 	def get(self, resource, *args):
@@ -84,9 +83,12 @@ class ALHWeb(ALHProtocol):
 	def __init__(self, base_url):
 		self.base_url = base_url
 
+	def _log(self, msg):
+		pass
+
 	def _send(self, url):
 		resp = urllib.urlopen(url).read()
-		resp = resp.replace("<br>", "\n")
+		#resp = resp.replace("<br>", "\n")
 		return resp
 
 	def _send_with_error(self, url):
@@ -97,6 +99,7 @@ class ALHWeb(ALHProtocol):
 		if "error" in resp.lower() or "warning" in resp.lower():
 			raise ALHRandomError(resp)
 		
+		self._log(resp)
 		return resp
 
 	def get(self, resource, *args):
@@ -104,7 +107,7 @@ class ALHWeb(ALHProtocol):
 		arg = "".join(args)
 		query = (
 				('method', 'get'),
-				('resource', '*%s?%s*' % (resource, arg)),
+				('resource', '%s?%s' % (resource, arg)),
 		)
 
 		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
@@ -116,8 +119,8 @@ class ALHWeb(ALHProtocol):
 		arg = "".join(args)
 		query = (
 				('method', 'post'),
-				('resource', '*%s?%s*' % (resource, arg)),
-				('content', '*%s*' % (data,)),
+				('resource', '%s?%s' % (resource, arg)),
+				('content', '%s' % (data,)),
 		)
 
 		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
