@@ -1,8 +1,11 @@
 import binascii
 import re
+import sys
 import urllib
 
-class ALHProtocolException(Exception):
+class ALHException(Exception): pass
+
+class ALHProtocolException(ALHException):
 	def __init__(self, msg):
 		if msg.endswith(self.TERMINATOR):
 			msg = msg[:-len(self.TERMINATOR)].strip()
@@ -14,23 +17,35 @@ class JunkInput(ALHProtocolException):
 class CorruptedData(ALHProtocolException): 
 	TERMINATOR = "CORRUPTED-DATA\r\n"
 
-class ALHRandomError(Exception): pass
+class ALHRandomError(ALHException): pass
 
-class CRCError(Exception): pass
+class CRCError(ALHException): pass
 
 """Almost-like-HTTP protocol handler
 """
 class ALHProtocol:
-	pass
+	RETRIES = 5
+
+	def _log(self, msg):
+		pass
+
+	def _send_with_retry(self, data):
+
+		for retry in xrange(self.RETRIES):
+			try:
+				return self._send_with_error(data)
+			except ALHException, e:
+				if retry == self.RETRIES - 1:
+					raise e
+				else:
+					sys.excepthook(*sys.exc_info())
+					print "Retrying (%d)..." % (retry+1)
 
 class ALHTerminal(ALHProtocol):
 	RESPONSE_TERMINATOR = "\r\nOK\r\n"
 
 	def __init__(self, f):
 		self.f = f
-
-	def _log(self, msg):
-		pass
 
 	def _send(self, data):
 		self.f.write(data)
@@ -65,7 +80,7 @@ class ALHTerminal(ALHProtocol):
 
 	def get(self, resource, *args):
 		arg = "".join(args)
-		return self._send_with_error("get %s?%s\r\n" % (resource, arg))
+		return self._send_with_retry("get %s?%s\r\n" % (resource, arg))
 
 	def post(self, resource, data, *args):
 		arg = "".join(args)
@@ -77,14 +92,11 @@ class ALHTerminal(ALHProtocol):
 
 		req += "crc=%d\r\n" % crc
 
-		return self._send_with_error(req)
+		return self._send_with_retry(req)
 
 class ALHWeb(ALHProtocol):
 	def __init__(self, base_url):
 		self.base_url = base_url
-
-	def _log(self, msg):
-		pass
 
 	def _send(self, url):
 		resp = urllib.urlopen(url).read()
@@ -112,7 +124,7 @@ class ALHWeb(ALHProtocol):
 
 		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
 
-		return self._send_with_error(url)
+		return self._send_with_retry(url)
 
 	def post(self, resource, data, *args):
 
@@ -125,7 +137,7 @@ class ALHWeb(ALHProtocol):
 
 		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
 
-		return self._send_with_error(url)
+		return self._send_with_retry(url)
 
 class ALHProxy(ALHProtocol):
 	def __init__(self, alhproxy, addr):
