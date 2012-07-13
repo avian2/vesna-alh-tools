@@ -139,6 +139,8 @@ def reboot_firmware(alh, slot_id):
 def log(msg):
 	if all(c in string.printable for c in msg):
 		print msg.decode("ascii", "ignore")
+	else:
+		print "Unprintable packet"
 
 def test_terminal_reprogram():
 	f = serial.Serial("/dev/ttyUSB0", 115200, timeout=10)
