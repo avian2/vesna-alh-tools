@@ -107,75 +107,28 @@ class ALHSpectrumSensingExperiment:
 
 		return self._decode(data)
 
-def upload_firmware(alh, firmware, slot_id):
-	alh.post("prog/nextFirmwareSlotId", "%d" % (slot_id,))
-	alh.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
-	alh.post("prog/nextEraseSlotId", "%d" % (slot_id,))
-
-	chunk_size = 512
-	total_size = len(firmware)
-	chunk_num = 0
-	p = 0
-	while p < total_size:
-		chunk_data = struct.pack(">i", chunk_num) + firmware[p:p+chunk_size]
-		if len(chunk_data) != 516:
-			chunk_data += "\xff" * (516 - len(chunk_data))
-			
-		chunk_data_crc = binascii.crc32(chunk_data)
-
-		chunk = chunk_data + struct.pack(">i", chunk_data_crc)
-
-		alh.post("firmware", chunk)
-
-		p += chunk_size
-		chunk_num += 1
-
-	alh.post("prog/nextFirmwareCrc", "%d" % (binascii.crc32(firmware),))
-
-def reboot_firmware(alh, slot_id):
-	alh.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
-	alh.post("prog/doRestart", "1")
-
-def log(msg):
-	if all(c in string.printable for c in msg):
-		print msg.decode("ascii", "ignore")
-	else:
-		print "Unprintable packet"
-
-def test_terminal_reprogram():
-	f = serial.Serial("/dev/ttyUSB0", 115200, timeout=10)
-	coor = alh.ALHTerminal(f)
-	nde7 = alh.ALHProxy(coor, 1)
-
-	coor._log = log
-
-	coor.post("prog/firstcall", "1")
-	nde7.post("prog/firstcall", "1")
-
-	firmware = open("/home/avian/dev/vesna-drivers/Applications/Logatec/NodeSpectrumSensor/logatec_node_app.bin").read()
-	upload_firmware(nde7, firmware, 1)
-	reboot_firmware(nde7, 1)
-
 def test_spectrum_sensing():
 
-	f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
-	coor = alh.ALHTerminal(f)
-	nde7 = alh.ALHProxy(coor, 1)
+	#f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
+	#coor = alh.ALHTerminal(f)
+	#nde7 = alh.ALHProxy(coor, 1)
 
-	#coor = alh.ALHWeb("http://194.249.231.26:9002/communicator")
-	#nde7 = alh.ALHProxy(coor, 43)
+	coor = alh.ALHWeb("http://194.249.231.26:9002/communicator")
+
+	addrs = [ 36, 37, 29, 41, 43, 40 ]
+	nodes = [ alh.ALHProxy(coor, addr) for addr in addrs ]
 
 	coor._log = log
 
-	#a = nde7.get("sensing/slotDataBinary?id=3&start=0&size=512")
-	#print len(a)
-	#print repr(a)
-	#return
 
 	coor.post("prog/firstcall", "1")
-	nde7.post("prog/firstcall", "1")
+	for node in nodes:
+		node.post("prog/firstcall", "1")
 
-	nde7.get("sensing/deviceConfigList")
+	return
+
+	#for node in nodes:
+	#	node.get("sensing/deviceConfigList")
 
 #	node8req = ""
 #	node7req = ""
@@ -197,7 +150,8 @@ def test_spectrum_sensing():
 	#		"in 45 sec for 10 sec with dev 0 conf 0 channel 200 power 0\r\n"
 	#		)
 	
-	exp = ALHSpectrumSensingExperiment(nde7,
+	experiments = [
+		ALHSpectrumSensingExperiment(node,
 			time_start = 2,
 			time_duration = 60,
 			device = 0,
@@ -206,26 +160,28 @@ def test_spectrum_sensing():
 			ch_step = 1,
 			ch_stop = 255,
 			slot_id = 3)
+		for node in nodes ]
 
-	exp.program()
+	for experiment in experiments:
+		experiment.program()
 
-	while not exp.is_complete():
-		print "waiting..."
-		time.sleep(1)
+	for n, experiment in enumerate(experiments):
+		while not experiment.is_complete():
+			print "waiting..."
+			time.sleep(1)
 
-	print "experiment is finished. retrieving data."
+		print "experiment is finished. retrieving data."
 
-	sweeps = exp.retrieve()
+		sweeps = experiment.retrieve()
 
-	outf = open("out", "w")
-	for sweep in sweeps:
-		for dbm in sweep:
-			outf.write("%f\n" % (dbm,))
-		outf.write("\n")
-	outf.close()
+		outf = open("large_%d" % n, "w")
+		for sweep in sweeps:
+			for dbm in sweep:
+				outf.write("%f\n" % (dbm,))
+			outf.write("\n")
+		outf.close()
 
 def main():
-	#test_terminal_reprogram()
 	test_spectrum_sensing()
 	return
 
