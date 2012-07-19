@@ -107,6 +107,45 @@ class ALHSpectrumSensingExperiment:
 
 		return self._decode(data)
 
+def log(msg):
+	if all(c in string.printable for c in msg):
+		print msg.decode("ascii", "ignore")
+	else:
+		print "Unprintable packet"
+
+def test_signal_generation():
+	f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
+	coor = alh.ALHTerminal(f)
+	coor._log = log
+
+	node = alh.ALHProxy(coor, 1)
+
+	coor.post("prog/firstcall", "1")
+	node.post("prog/firstcall", "1")
+
+	node.get("generator/deviceConfigList")
+	
+	for n in xrange(0, 256, 5):
+		print n
+		req = "in 0 sec for 5 sec with dev 0 conf 0 channel %d power 0\r\n" % (n,)
+		node.post("generator/program", req)
+		time.sleep(5)
+
+	for n in xrange(0, 160, 5):
+		print n
+		req = "in 0 sec for 5 sec with dev 0 conf 1 channel %d power 0\r\n" % (n,)
+		node.post("generator/program", req)
+		time.sleep(5)
+
+	#for n in xrange(0, 140, 10):
+	#	print n
+	#	req = "in 0 sec for 2 sec with dev 0 conf 2 channel %d power 0\r\n" % (n,)
+	#	node.post("generator/program", req)
+	#	time.sleep(2)
+	
+	#req = "in 1 sec for 60 sec with dev 0 conf 0 channel %d power 0\r\n" % (127,)
+	#node.post("generator/program", req)
+
 def test_spectrum_sensing():
 
 	#f = serial.Serial("/dev/ttyUSB1", 115200, timeout=10)
@@ -114,11 +153,13 @@ def test_spectrum_sensing():
 	#nde7 = alh.ALHProxy(coor, 1)
 
 	coor = alh.ALHWeb("http://194.249.231.26:9002/communicator")
+	coor._log = log
 
 	addrs = [ 36, 37, 29, 41, 43, 40 ]
 	nodes = [ alh.ALHProxy(coor, addr) for addr in addrs ]
 
-	coor._log = log
+	print coor.get("radio/neighbors")
+	return
 
 
 	coor.post("prog/firstcall", "1")
@@ -182,7 +223,8 @@ def test_spectrum_sensing():
 		outf.close()
 
 def main():
-	test_spectrum_sensing()
+	#test_spectrum_sensing()
+	test_signal_generation()
 	return
 
 main()
