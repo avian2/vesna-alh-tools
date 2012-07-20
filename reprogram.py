@@ -3,6 +3,7 @@ import binascii
 import serial
 import string
 import struct
+import time
 from optparse import OptionParser, OptionGroup
 
 def log(msg):
@@ -39,6 +40,10 @@ def upload_firmware(target, firmware, slot_id):
 def reboot_firmware(target, slot_id):
 	target.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
 	target.post("prog/doRestart", "1")
+
+def confirm(target):
+	target.post("prog/firstcall", "1")
+	target.post("prog/runningFirmwareIsValid", "1")
 
 def main():
 	parser = OptionParser(usage="%prog [options]")
@@ -87,6 +92,13 @@ def main():
 	firmware = open(options.input).read()
 
 	upload_firmware(target, firmware, options.slot_id)
+
+	print "Reprogramming done. Rebooting node."
 	reboot_firmware(target, options.slot_id)
+
+	print "Waiting for node to boot."
+	time.sleep(60)
+
+	confirm(target)
 
 main()
