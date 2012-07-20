@@ -60,6 +60,8 @@ def main():
 
 	parser.add_option("-i", "--input", dest="input", metavar="PATH",
 			help="PATH to firmware to upload")
+	parser.add_option("-C", "--confirm", dest="confirm", action="store_true",
+			help="Don't reprogram, just confirm currently running firmware as valid")
 
 	parser.add_option("-s", "--slot", dest="slot_id", metavar="ID", default=1,
 			help="Use SD card slot ID for upload")
@@ -89,15 +91,22 @@ def main():
 		print "Please give either -n or -c option"
 		return -1
 
-	firmware = open(options.input).read()
+	if options.input and not options.confirm:
+		firmware = open(options.input).read()
+	elif options.confirm and not options.input:
+		firmware = None
+	else:
+		print "Please give either -i or -C option"
+		return -1
 
-	upload_firmware(target, firmware, options.slot_id)
+	if firmware:
+		upload_firmware(target, firmware, options.slot_id)
 
-	print "Reprogramming done. Rebooting node."
-	reboot_firmware(target, options.slot_id)
+		print "Reprogramming done. Rebooting node."
+		reboot_firmware(target, options.slot_id)
 
-	print "Waiting for node to boot."
-	time.sleep(60)
+		print "Waiting for node to boot."
+		time.sleep(60)
 
 	confirm(target)
 
