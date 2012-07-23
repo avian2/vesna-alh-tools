@@ -63,7 +63,7 @@ def main():
 	parser.add_option("-C", "--confirm", dest="confirm", action="store_true",
 			help="Don't reprogram, just confirm currently running firmware as valid")
 
-	parser.add_option("-s", "--slot", dest="slot_id", metavar="ID", default=1,
+	parser.add_option("-s", "--slot", dest="slot_id", metavar="ID", type="int", default=1,
 			help="Use SD card slot ID for upload")
 
 	(options, args) = parser.parse_args()
