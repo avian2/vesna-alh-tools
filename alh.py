@@ -95,8 +95,9 @@ class ALHTerminal(ALHProtocol):
 		return self._send_with_retry(req)
 
 class ALHWeb(ALHProtocol):
-	def __init__(self, base_url):
+	def __init__(self, base_url, cluster_id):
 		self.base_url = base_url
+		self.cluster_id = cluster_id
 
 	def _send(self, url):
 		resp = urllib.urlopen(url).read()
@@ -120,6 +121,7 @@ class ALHWeb(ALHProtocol):
 		query = (
 				('method', 'get'),
 				('resource', '%s?%s' % (resource, arg)),
+				('cluster', str(self.cluster_id)),
 		)
 
 		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
@@ -133,6 +135,7 @@ class ALHWeb(ALHProtocol):
 				('method', 'post'),
 				('resource', '%s?%s' % (resource, arg)),
 				('content', '%s' % (data,)),
+				('cluster', str(self.cluster_id)),
 		)
 
 		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
