@@ -1,16 +1,10 @@
 import alh
 import binascii
+import common
 import serial
-import string
 import struct
 import time
 from optparse import OptionParser, OptionGroup
-
-def log(msg):
-	if all(c in string.printable for c in msg):
-		print msg.decode("ascii", "ignore")
-	else:
-		print "Unprintable packet"
 
 def upload_firmware(target, firmware, slot_id):
 	target.post("prog/nextFirmwareSlotId", "%d" % (slot_id,), "admin")
@@ -48,10 +42,7 @@ def confirm(target):
 def main():
 	parser = OptionParser(usage="%prog [options]")
 
-	parser.add_option("-H", "--host", dest="host", metavar="HOST",
-			help="Use HOST for communication with coordinator")
-	parser.add_option("-D", "--device", dest="device", metavar="PATH",
-			help="Use serial terminal for communication with coordinator")
+	common.add_communication_options(parser)
 
 	parser.add_option("-n", "--node", dest="node", metavar="ADDR", type="int",
 			help="Reprogram node with ZigBit address ADDR")
@@ -68,17 +59,7 @@ def main():
 
 	(options, args) = parser.parse_args()
 
-	if options.host and not options.device:
-		coordinator = alh.ALHWeb("http://%s/communicator" % (options.host,))
-	elif options.device and not options.host:
-		f = serial.Serial(options.device, 115200, timeout=10)
-		coordinator = alh.ALHTerminal(f)
-	else:
-		print "Please give either -H or -D option"
-		return -1
-
-	coordinator._log = log
-
+	coordinator = common.get_coordinator(options)	
 	coordinator.post("prog/firstcall", "1")
 
 	if options.coordinator and not options.node:
