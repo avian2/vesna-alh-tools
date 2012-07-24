@@ -13,7 +13,7 @@ def log(msg):
 		print "Unprintable packet"
 
 def upload_firmware(target, firmware, slot_id):
-	target.post("prog/nextFirmwareSlotId", "%d" % (slot_id,))
+	target.post("prog/nextFirmwareSlotId", "%d" % (slot_id,), "admin")
 	target.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
 	target.post("prog/nextEraseSlotId", "%d" % (slot_id,))
 
