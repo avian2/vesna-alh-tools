@@ -51,6 +51,8 @@ def main():
 
 	parser.add_option("-i", "--input", dest="input", metavar="PATH",
 			help="PATH to firmware to upload")
+	parser.add_option("-r", "--reboot", dest="reboot", action="store_true",
+			help="Reboot the node with the uploaded firmware")
 	parser.add_option("-C", "--confirm", dest="confirm", action="store_true",
 			help="Don't reprogram, just confirm currently running firmware as valid")
 
@@ -72,18 +74,17 @@ def main():
 		print "Please give either -n or -c option"
 		return -1
 
-	if options.input and not options.confirm:
-		firmware = open(options.input).read()
-	elif options.confirm and not options.input:
-		firmware = None
-	else:
-		print "Please give either -i or -C option"
+	if not options.reboot and not options.confirm and not options.input:
+		print "Please give either -i, -r and/or -C option"
 		return -1
 
-	if firmware:
+	if options.input:
+		firmware = open(options.input).read()
 		upload_firmware(target, firmware, options.slot_id)
+		print "Reprogramming done."
 
-		print "Reprogramming done. Rebooting node."
+	if options.reboot:
+		print "Rebooting node."
 		reboot_firmware(target, options.slot_id)
 
 		print "Waiting for node to boot."
