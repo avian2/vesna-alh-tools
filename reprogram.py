@@ -87,8 +87,12 @@ def main():
 		print "Rebooting node."
 		reboot_firmware(target, options.slot_id)
 
-		print "Waiting for node to boot."
-		time.sleep(60)
+		if options.coordinator:
+			print "Waiting for coordinator to boot"
+			time.sleep(180)
+		else:
+			print "Waiting for node to boot."
+			time.sleep(60)
 
 	confirm(target)
 
