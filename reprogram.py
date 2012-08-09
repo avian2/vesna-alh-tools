@@ -82,6 +82,8 @@ def main():
 		print "Please give either -n or -c option"
 		return -1
 
+	target.get("hello")
+
 	if not options.reboot and not options.confirm and not options.input:
 		print "Please give either -i, -r and/or -C option"
 		return -1
