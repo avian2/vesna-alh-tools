@@ -7,6 +7,8 @@ import time
 from optparse import OptionParser, OptionGroup
 
 def upload_firmware(target, firmware, slot_id):
+	start_time = time.time()
+
 	target.post("prog/nextFirmwareSlotId", "%d" % (slot_id,), "admin")
 	target.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
 	target.post("prog/nextEraseSlotId", "%d" % (slot_id,))
@@ -30,6 +32,12 @@ def upload_firmware(target, firmware, slot_id):
 		chunk_num += 1
 
 	target.post("prog/nextFirmwareCrc", "%d" % (binascii.crc32(firmware),))
+
+	elapsed = time.time() - start_time
+	print "Transferred %d bytes in %d seconds: %.2f B/s\n" % (
+			total_size,
+			elapsed,
+			float(total_size)/elapsed)
 
 def reboot_firmware(target, slot_id):
 	target.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
