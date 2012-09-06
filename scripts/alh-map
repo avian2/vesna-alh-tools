@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from alh import alh
 from alh import common
+import datetime
 from optparse import OptionParser
 import sys
 
@@ -8,6 +9,7 @@ class NodeInfo:
 	def __init__(self):
 		self.hello = None
 		self.firstcall = None
+		self.uptime = None
 
 def query_node(node):
 	nodeinfo = NodeInfo()
@@ -15,9 +17,21 @@ def query_node(node):
 	try:
 		nodeinfo.hello = node.get("hello").strip()
 		nodeinfo.firstcall = node.get("prog/firstcall").strip()
+		nodeinfo.uptime = float(node.get("uptime").strip())
 	except:
 		nodeinfo.ok = False
 	else:
+		if nodeinfo.hello:
+			nodeinfo.hello = nodeinfo.hello.replace(
+					"Hello Application version ", "")
+
+		if nodeinfo.firstcall:
+			nodeinfo.firstcall = nodeinfo.firstcall.replace(
+					"firstCallFlag is ", "")
+
+		if nodeinfo.uptime:
+			nodeinfo.uptime -= 1325376000.0 
+
 		nodeinfo.ok = True
 
 	return nodeinfo
@@ -41,22 +55,14 @@ def get_neigbors(node):
 def print_stats(visited):
 	visited = sorted((id, info) for id, info in visited.iteritems())
 
-	print "ID\tOnline\tVersion\tFirst call"
+	print "ID\tOnline\tVersion\tF.call\tUptime"
 	for id, info in visited:
-
-		if info.hello:
-			info.hello = info.hello.replace(
-					"Hello Application version ", "")
-
-		if info.firstcall:
-			info.firstcall = info.firstcall.replace(
-					"firstCallFlag is ", "")
-
 		row = [	
 			id,
 			info.ok,
 			info.hello,
-			info.firstcall
+			info.firstcall,
+			datetime.timedelta(seconds=info.uptime),
 		]
 
 		print '\t'.join(map(str, row))
