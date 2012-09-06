@@ -94,12 +94,14 @@ def main():
 			else:
 				node = alh.ALHProxy(coordinator, current_id)
 
-			visited[current_id] = query_node(node)
+			nodeinfo = query_node(node)
+			visited[current_id] = nodeinfo
 
-			for next_id in get_neigbors(node):
-				outf.write("n%d -> n%d\n" % (current_id, next_id))
-				queue.insert(0, next_id)
-
+			if nodeinfo.ok:
+				for next_id in get_neigbors(node):
+					outf.write("n%d -> n%d\n" % (current_id, next_id))
+					queue.insert(0, next_id)
+	
 	outf.write("}\n")
 
 	print_stats(visited)
