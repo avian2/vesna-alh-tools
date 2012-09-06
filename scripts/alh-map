@@ -1,5 +1,6 @@
-import alh
-import common
+#!/usr/bin/python
+from alh import alh
+from alh import common
 from optparse import OptionParser
 import sys
 

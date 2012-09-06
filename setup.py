@@ -11,7 +11,8 @@ setup(name='vesna-alhtools',
       author_email='tomaz.solc@tablix.org',
 
       packages = [ 'alh' ],
-      scripts = [ 'scripts/alh-reprogram' ],
+      scripts = [ 'scripts/alh-reprogram',
+	      'scripts/alh-map' ],
 
       provides = [ 'alh' ],
 )
