@@ -1,6 +1,7 @@
-import alh
+#!/usr/bin/python
+from alh import alh
+from alh import common
 import binascii
-import common
 import serial
 import struct
 import time
