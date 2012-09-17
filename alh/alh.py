@@ -1,6 +1,7 @@
 import binascii
 import re
 import sys
+import time
 import urllib
 
 class ALHException(Exception): pass
@@ -105,7 +106,16 @@ class ALHWeb(ALHProtocol):
 		return resp
 
 	def _send_with_error(self, url):
-		resp = self._send(url)
+		# loop until communication channel is free and our request
+		# goes through.
+		while True:
+			resp = self._send(url)
+			if resp != "ERROR: Communication in progress":
+				break
+
+			self._log("Communication in progress...")
+
+			time.sleep(1)
 
 		# this usually, but not always, means something went
 		# wrong.
