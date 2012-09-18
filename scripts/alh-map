@@ -30,7 +30,7 @@ def query_node(node):
 					"firstCallFlag is ", "")
 
 		if nodeinfo.uptime:
-			nodeinfo.uptime -= 1325376000.0 
+			nodeinfo.uptime = datetime.timedelta(seconds=nodeinfo.uptime-1325376000.0)
 
 		nodeinfo.ok = True
 
@@ -62,7 +62,7 @@ def print_stats(visited):
 			info.ok,
 			info.hello,
 			info.firstcall,
-			datetime.timedelta(seconds=info.uptime),
+			info.uptime,
 		]
 
 		print '\t'.join(map(str, row))
