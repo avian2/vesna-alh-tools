@@ -2,7 +2,9 @@
 from alh import alh
 from alh import common
 import datetime
+import glob
 from optparse import OptionParser
+import os
 import re
 import sys
 
@@ -139,11 +141,16 @@ def traverse_network(options):
 	return visited
 
 def do_munin(options, visited):
+	refreshed = set()
+
 	for resource in NodeInfo.RESOURCES:
 		if hasattr(resource, "MUNIN_CONFIG"):
 			label = resource.LABEL
 
-			outf = open("%s/config_%s" % (options.output, label), "w")
+			path = "%s/config_%s" % (options.output, label)
+			refreshed.add(path)
+
+			outf = open(path, "w")
 			outf.write(resource.MUNIN_CONFIG)
 			outf.write("%s.label %s\n" % (label, label))
 			outf.close()
@@ -151,9 +158,17 @@ def do_munin(options, visited):
 			for current_id, nodeinfo in visited.iteritems():
 				if label in nodeinfo.info:
 					value = nodeinfo.info[label]
-					outf = open("%s/node_%d_%s" % (options.output, current_id, label), "w")
+
+					path = "%s/node_%d_%s" % (options.output, current_id, label)
+					refreshed.add(path)
+
+					outf = open(path, "w")
 					outf.write("%s.value %f\n" % (label, value))
 					outf.close()
+
+	for path in glob.glob("%s/*" % (options.output,)):
+		if path not in refreshed:
+			os.unlink(path)
 
 def main():
 	parser = OptionParser(usage="%prog [options]")
