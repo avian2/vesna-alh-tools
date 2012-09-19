@@ -3,54 +3,101 @@ from alh import alh
 from alh import common
 import datetime
 from optparse import OptionParser
+import re
 import sys
 
+class NodeResource: pass
+
+class NodeUptime(NodeResource):
+	MUNIN_CONFIG = """graph_title Uptime
+graph_args --base 1000 -l 0
+graph_scale no
+graph_vlabel uptime in days
+graph_category SNC
+"""
+
+	LABEL = "uptime"
+
+	def fetch(self, node):
+		uptime = float(node.get("uptime").strip())
+
+		# uptime doesn't start counting from 0
+		uptime -= 1325376000.0
+
+		return uptime / 86400.0
+
+class NodeMCUTemperature(NodeResource):
+	MUNIN_CONFIG = """graph_title MCU temperature
+graph_args --base 1000
+graph_scale no
+graph_vlabel degrees Celsius
+graph_category SNC
+"""
+
+	LABEL = "mcutemp"
+
+	def fetch(self, node):
+		s = node.get("sensor/mcuTemp").strip()
+		g = re.search("MCU temperature is ([0-9.]+) C", s)
+		return float(g.group(1))
+
+class NodeFirmwareVersion(NodeResource):
+	LABEL = "version"
+
+	def fetch(self, node):
+		hello = node.get("hello").strip()
+		return hello.replace("Hello Application version ", "")
+
 class NodeInfo: 
+	RESOURCES = [
+		NodeFirmwareVersion,
+		NodeUptime,
+		NodeMCUTemperature ]
+
 	def __init__(self):
-		self.hello = None
-		self.firstcall = None
-		self.uptime = None
+		self.info = {}
 
-def query_node(node):
-	nodeinfo = NodeInfo()
+	def fetch(self, node):
 
-	try:
-		nodeinfo.hello = node.get("hello").strip()
-		nodeinfo.firstcall = node.get("prog/firstcall").strip()
-		nodeinfo.uptime = float(node.get("uptime").strip())
-	except:
-		nodeinfo.ok = False
-	else:
-		if nodeinfo.hello:
-			nodeinfo.hello = nodeinfo.hello.replace(
-					"Hello Application version ", "")
+		try:
+			node.post("prog/firstcall", 1)
+		except Exception, e:
+			print "Fail:", e
+			return
 
-		if nodeinfo.firstcall:
-			nodeinfo.firstcall = nodeinfo.firstcall.replace(
-					"firstCallFlag is ", "")
+		for resource in self.RESOURCES:
+			i = resource()
 
-		if nodeinfo.uptime:
-			nodeinfo.uptime = datetime.timedelta(seconds=nodeinfo.uptime-1325376000.0)
-
-		nodeinfo.ok = True
-
-	return nodeinfo
+			try:
+				self.info[i.LABEL] = i.fetch(node)
+			except Exception, e:
+				print "Fail:", e
+				pass
 
 def get_neigbors(node):
+	neighbors = []
+
 	try:
-		#node.post("prog/firstcall", "1")
 		r = node.get("radio/neighbors")
 	except Exception, e:
-		print "Failed:", e
-		return
+		print "Fail:", e
+		return neighbors
 
 	for line in r.split("\r\n"):
 		fields = line.split(" | ")
 		if len(fields) == 6:
 			try:
-				yield int(fields[3])
+				neighbors.append(int(fields[3]))
 			except ValueError:
 				pass
+
+	return neighbors
+
+def query_node(node):
+	nodeinfo = NodeInfo()
+	nodeinfo.fetch(node)
+	nodeinfo.neighbors = get_neigbors(node)
+	return nodeinfo
 
 def print_stats(visited):
 	visited = sorted((id, info) for id, info in visited.iteritems())
@@ -62,11 +109,51 @@ def print_stats(visited):
 			info.ok,
 			info.hello,
 			info.firstcall,
-			info.uptime,
+			info.uptime_td,
 		]
 
 		print '\t'.join(map(str, row))
 
+def traverse_network(options):
+
+	coordinator = common.get_coordinator(options)
+	coordinator.RETRIES = 1
+
+	queue = [0]
+	visited = {}
+
+	while queue:
+		current_id = queue.pop()
+		if current_id not in visited:
+			if current_id == 0:
+				node = coordinator
+			else:
+				node = alh.ALHProxy(coordinator, current_id)
+
+			nodeinfo = query_node(node)
+			visited[current_id] = nodeinfo
+
+			for next_id in nodeinfo.neighbors:
+				queue.insert(0, next_id)
+	
+	return visited
+
+def do_munin(options, visited):
+	for resource in NodeInfo.RESOURCES:
+		if hasattr(resource, "MUNIN_CONFIG"):
+			label = resource.LABEL
+
+			outf = open("%s/config_%s" % (options.output, label), "w")
+			outf.write(resource.MUNIN_CONFIG)
+			outf.write("%s.label %s\n" % (label, label))
+			outf.close()
+
+			for current_id, nodeinfo in visited.iteritems():
+				if label in nodeinfo.info:
+					value = nodeinfo.info[label]
+					outf = open("%s/node_%d_%s" % (options.output, current_id, label), "w")
+					outf.write("%s.value %f\n" % (label, value))
+					outf.close()
 
 def main():
 	parser = OptionParser(usage="%prog [options]")
@@ -76,41 +163,31 @@ def main():
 	parser.add_option("-o", "--output", dest="output", metavar="PATH",
 			help="PATH to write dotfile to")
 
+	parser.add_option("-t", "--dot", dest="do_dot", action="store_true",
+			help="Output a DOT file")
+	parser.add_option("-m", "--munin", dest="do_munin", action="store_true",
+			help="Output a directory for the Munin plug-in")
+
 	(options, args) = parser.parse_args()
 
-	coordinator = common.get_coordinator(options)	
+	visited = traverse_network(options)
 
-	queue = [0]
-	visited = {}
+	if options.do_dot:
 
-	if options.output:
-		outf = open(options.output, "w")
-	else:
-		outf = sys.stdout
+		if options.output:
+			outf = open(options.output, "w")
+		else:
+			outf = sys.stdout
 
-	outf.write("digraph net {\n")
-
-	n = 0
-	while queue:
-		current_id = queue.pop()
-		if current_id not in visited:
-			print "*** Query node ID:", current_id
-
-			if current_id == 0:
-				node = coordinator
-			else:
-				node = alh.ALHProxy(coordinator, current_id)
-
-			nodeinfo = query_node(node)
-			visited[current_id] = nodeinfo
-
-			if nodeinfo.ok:
-				for next_id in get_neigbors(node):
+		outf.write("digraph net {\n")
+		for current_id, nodeinfo in visited.iteritems():
+			if nodeinfo.neighbors:
+				for next_id in nodeinfo.neighbors:
 					outf.write("n%d -> n%d\n" % (current_id, next_id))
-					queue.insert(0, next_id)
-	
-	outf.write("}\n")
-
-	print_stats(visited)
+		outf.write("}\n")
+	elif options.do_munin:
+		do_munin(options, visited)
+	else:
+		print_stats(visited)
 
 main()
