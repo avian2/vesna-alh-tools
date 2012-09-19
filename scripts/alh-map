@@ -101,21 +101,6 @@ def query_node(node):
 	nodeinfo.neighbors = get_neigbors(node)
 	return nodeinfo
 
-def print_stats(visited):
-	visited = sorted((id, info) for id, info in visited.iteritems())
-
-	print "ID\tOnline\tVersion\tF.call\tUptime"
-	for id, info in visited:
-		row = [	
-			id,
-			info.ok,
-			info.hello,
-			info.firstcall,
-			info.uptime_td,
-		]
-
-		print '\t'.join(map(str, row))
-
 def traverse_network(options):
 
 	coordinator = common.get_coordinator(options)
@@ -170,6 +155,24 @@ def do_munin(options, visited):
 		if path not in refreshed:
 			os.unlink(path)
 
+def do_stats(options, visited):
+	visited = sorted((id, info) for id, info in visited.iteritems())
+
+	print "ID\tVersion\tUptime"
+	for id, nodeinfo in visited:
+		if nodeinfo.info.get('uptime') is not None:
+			uptime = datetime.timedelta(days=nodeinfo.info['uptime'])
+		else:
+			uptime = None
+
+		row = [	
+			id,
+			nodeinfo.info.get('version'),
+			uptime,
+		]
+
+		print '\t'.join(map(str, row))
+
 def main():
 	parser = OptionParser(usage="%prog [options]")
 
@@ -203,6 +206,6 @@ def main():
 	elif options.do_munin:
 		do_munin(options, visited)
 	else:
-		print_stats(visited)
+		do_stats(options, visited)
 
 main()
