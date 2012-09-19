@@ -1,6 +1,7 @@
 import alh
 import serial
 import string
+import sys
 
 def add_communication_options(parser):
 	parser.add_option("-U", "--url", dest="url", metavar="URL",
@@ -10,12 +11,14 @@ def add_communication_options(parser):
 
 	parser.add_option("-D", "--device", dest="device", metavar="PATH",
 			help="Use serial terminal for communication with coordinator")
+	parser.add_option("-d", "--debug", dest="debug", action="store_true",
+			help="Enable debug output on standard error")
 
 def log(msg):
 	if all(c in string.printable for c in msg):
-		print msg.decode("ascii", "ignore")
+		sys.stderr.write("%s\n" % (msg.decode("ascii", "ignore"),))
 	else:
-		print "Unprintable packet"
+		sys.stderr.write("Unprintable packet\n")
 
 def get_coordinator(options):
 	if options.url and not options.device:
@@ -26,5 +29,7 @@ def get_coordinator(options):
 	else:
 		raise Exception("Please give either -U or -D option")
 
-	coordinator._log = log
+	if options.debug:
+		coordinator._log = log
+
 	return coordinator
