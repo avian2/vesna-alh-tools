@@ -158,7 +158,7 @@ class ALHProxy(ALHProtocol):
 		self.addr = addr
 
 	def _recover_remote(self):
-		self.alhproxy.post("radio/noderesetparser", "", "%d" % (self.addr,))
+		self.alhproxy.post("radio/noderesetparser", "1", "%d" % (self.addr,))
 
 	def _check_for_junk_state(self, message):
 		g = re.search("NODES:Node ([0-9]+) parser is in junk state\r\nERROR", message)
