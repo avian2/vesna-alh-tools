@@ -65,11 +65,13 @@ graph_args --base 1000
 graph_vlabel bits in (-) / out (+) per second
 graph_category SNR
 rx.label received
-rx.type COUNTER
+rx.type DERIVE
+rx.min 0
 rx.graph no
 rx.cdef rx,8,*
 tx.label bps
-tx.type COUNTER
+tx.type DERIVE
+tx.min 0
 tx.negative rx
 tx.cdef tx,8,*
 
@@ -79,7 +81,8 @@ graph_args --base 1000
 graph_vlabel lost packets per second
 graph_category SNR
 overflow.label overflow
-overflow.type COUNTER
+overflow.type DERIVE
+overflow.min 0
 
 multigraph timeouts
 graph_title ZigBit module response timeouts
@@ -87,7 +90,8 @@ graph_args --base 1000
 graph_vlabel timeouts per second
 graph_category SNR
 timeouts.label timeouts
-timeouts.type COUNTER
+timeouts.type DERIVE
+timeouts.min 0
 """
 
 	LABEL = "radio"
