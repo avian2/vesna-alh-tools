@@ -99,7 +99,9 @@ timeouts.min 0
 	def fetch(self, node):
 		stats = node.get("radio/statistics").strip()
 		# [ tx, rx, overflows, timeouts ]
-		self.value = map(int, filter(lambda x:x.isdigit(), stats.split()))
+		stats = map(int, filter(lambda x:x.isdigit(), stats.split()))
+		if len(stats) >= 4:
+			self.value = stats
 
 	def munin_write(self, outf):
 		outf.write("""multigraph bytes
