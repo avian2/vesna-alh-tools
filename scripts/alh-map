@@ -7,6 +7,7 @@ from optparse import OptionParser
 import os
 import re
 import sys
+import time
 
 class NodeResource: 
 	def __init__(self):
@@ -56,6 +57,21 @@ class NodeFirmwareVersion(NodeResource):
 	def fetch(self, node):
 		hello = node.get("hello").strip()
 		self.value = hello.replace("Hello Application version ", "")
+
+class NodePingTime(NodeResource):
+	MUNIN_CONFIG = """graph_title Ping time
+graph_args --base 1000
+graph_vlabel seconds
+graph_category SNR
+ping.label = ping
+"""
+
+	LABEL = "ping"
+
+	def fetch(self, node):
+		start = time.time()
+		node.get("hello")
+		self.value = time.time() - start
 
 class NodeRadioStatistics(NodeResource):
 	MUNIN_CONFIG = """multigraph bytes
@@ -116,6 +132,7 @@ timeouts.value %d
 class NodeInfo: 
 	RESOURCES = [
 		NodeFirmwareVersion,
+		NodePingTime,
 		NodeUptime,
 		NodeMCUTemperature,
 		NodeRadioStatistics ]
