@@ -2,12 +2,15 @@
 
 set -e
 
-NODE_ID=`basename $0|sed 's/^.*_\([0-9]\+\)_.*$/\1/'`
-LABEL=`basename $0|sed 's/.*_//;s/\..*$//'`
+BASENAME=`basename $0`
+
+CLUSTER=`echo "$BASENAME"|sed 's/_.*//'`
+NODE_ID=`echo "$BASENAME"|sed 's/^.*_node_\([0-9]\+\)_.*$/\1/'`
+LABEL=`echo "$BASENAME"|sed 's/.*_//;s/\..*$//'`
 
 case $1 in
 	config)
-		echo "host_name node$NODE_ID"
+		echo "host_name node$NODE_ID.$CLUSTER"
 		cat "$datadir/config_$LABEL"
 		exit 0
 		;;
