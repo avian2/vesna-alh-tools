@@ -35,8 +35,11 @@ class SpectrumSensingRun:
 				self.slot_id))
 
 	def is_complete(self):
-		resp = self.alh.get("sensing/slotInformation", "id=%d" % (self.slot_id,))
-		return "status=COMPLETE" in resp
+		if time.time() < self.time_start + self.time_duration:
+			return False
+		else:
+			resp = self.alh.get("sensing/slotInformation", "id=%d" % (self.slot_id,))
+			return "status=COMPLETE" in resp
 
 	def _decode(self, data):
 		sweep_len = len(range(self.ch_start, self.ch_stop, self.ch_step))
