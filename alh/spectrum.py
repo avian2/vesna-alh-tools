@@ -21,7 +21,7 @@ class SpectrumSensingRun:
 	def program(self):
 		self.alh.post("sensing/freeUpDataSlot", "1", "id=%d" % (self.slot_id))
 
-		relative_time = int(self.time_start - time.time())
+		relative_time = max(0, int(self.time_start - time.time()))
 
 		self.alh.post("sensing/program",
 			"in %d sec for %d sec with dev %d conf %d ch %d:%d:%d to slot %d" % (
@@ -137,7 +137,7 @@ class SignalGenerationRun:
 		self.power = power
 
 	def program(self):
-		relative_time = int(self.time_start - time.time())
+		relative_time = max(0, int(self.time_start - time.time()))
 
 		self.alh.post("generator/program",
 			"in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
