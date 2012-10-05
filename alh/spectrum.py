@@ -2,6 +2,8 @@ import binascii
 import re
 import struct
 import time
+import alh
+import pickle
 
 class SpectrumSensingRun:
 	def __init__(self, alh, time_start, time_duration, 
@@ -50,6 +52,11 @@ class SpectrumSensingRun:
 		for n in xrange(0, len(data), 2):
 			datum = data[n:n+2]
 			if len(datum) != 2:
+				continue
+
+			if(n % sweep_len < 4 ):
+				# got a time-stamp
+				print "got a timestamp";
 				continue
 
 			dbm = struct.unpack("h", datum)[0]*1e-2
@@ -103,6 +110,12 @@ class SpectrumSensingRun:
 			data += chunk_data
 
 			p += max_read_size
+
+		# write data to file
+		filename = "rawfile_%d" % (self.alh.addr)
+		raw_data_file = open(filename, "w")
+		pickle.dump(data, raw_data_file)
+		raw_data_file.close()
 
 		return self._decode(data)
 
