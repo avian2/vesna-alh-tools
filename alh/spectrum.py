@@ -118,6 +118,8 @@ class MultiNodeSpectrumSensingRun:
 			run.program()
 
 	def is_complete(self):
+		for run in self.runs:
+			run.alh.get("sensing/program")
 		return all(run.is_complete() for run in self.runs)
 
 	def retrieve(self):

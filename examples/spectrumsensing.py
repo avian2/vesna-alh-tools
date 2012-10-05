@@ -10,25 +10,43 @@ def ism_24ghz(time_start, nodef):
 	SignalGenerationRun(
 			nodef(2),
 			time_start = time_start + 5.0,
-			time_duration = 10,
+			time_duration = 50,
 			device = 0,
 			config = 0,
-			channel = 50,
+			channel = 55,
 			power = 0).program()
 
 	SignalGenerationRun(
 			nodef(17),
 			time_start = time_start + 5.0,
-			time_duration = 10,
+			time_duration = 50,
 			device = 0,
 			config = 0,
-			channel = 150,
+			channel = 105,
 			power = 0).program()
 	
+	SignalGenerationRun(
+			nodef(24),
+			time_start = time_start + 5.0,
+			time_duration = 50,
+			device = 0,
+			config = 0,
+			channel = 155,
+			power = 0).program()
+
+	SignalGenerationRun(
+			nodef(26),
+			time_start = time_start + 5.0,
+			time_duration = 50,
+			device = 0,
+			config = 0,
+			channel = 205,
+			power = 0).program()
+
 	return MultiNodeSpectrumSensingRun(
-			[nodef(25), nodef(6)],
+			[nodef(25), nodef(6), nodef(4)],
 			time_start = time_start,
-			time_duration = 20,
+			time_duration = 60,
 			device = 0,
 			config = 0,
 			ch_start = 0,
@@ -40,19 +58,19 @@ def uhf_multiplex(time_start, nodef):
 	return MultiNodeSpectrumSensingRun(
 			[nodef(19)],
 			time_start = time_start,
-			time_duration = 60,
+			time_duration = 120,
 			device = 0,
 			config = 0,
-			ch_start = 0,
-			ch_step = 1500,
-			ch_stop = 392000,
+			ch_start = 76000,
+			ch_step = 500,
+			ch_stop = 116000,
 			slot_id = 5)
 
 def uhf_wireless_mic(time_start, nodef):
 	SignalGenerationRun(
 			nodef(8),
-			time_start = time_start,
-			time_duration = 50,
+			time_start = time_start + 30.0,
+			time_duration = 60,
 			device = 0,
 			config = 0,
 			channel = 0,
@@ -60,33 +78,42 @@ def uhf_wireless_mic(time_start, nodef):
 
 	SignalGenerationRun(
 			nodef(8),
-			time_start = time_start + 60.0,
-			time_duration = 50,
+			time_start = time_start + 90.0,
+			time_duration = 60,
 			device = 0,
 			config = 0,
-			channel = 10,
+			channel = 40,
+			power = 0).program()
+
+	SignalGenerationRun(
+			nodef(10),
+			time_start = time_start + 90.0,
+			time_duration = 60,
+			device = 0,
+			config = 0,
+			channel = 0,
 			power = 0).program()
 
 	SignalGenerationRun(
 			nodef(8),
-			time_start = time_start + 120.0,
-			time_duration = 50,
+			time_start = time_start + 150.0,
+			time_duration = 60,
 			device = 0,
 			config = 0,
-			channel = 20,
+			channel = 0,
 			power = 0).program()
 
 	SignalGenerationRun(
-			nodef(8),
-			time_start = time_start + 180.0,
-			time_duration = 50,
+			nodef(7),
+			time_start = time_start + 30.0,
+			time_duration = 180,
 			device = 0,
 			config = 0,
-			channel = 30,
+			channel = 80,
 			power = 0).program()
 
 	return MultiNodeSpectrumSensingRun(
-			[nodef(20), nodef(19)],
+			[nodef(19)],
 			time_start = time_start,
 			time_duration = 240,
 			device = 0,
@@ -103,10 +130,18 @@ def main():
 	coor = alh.ALHWeb("https://crn.log-a-tec.eu/communicator", 10001)
 	coor._log = log
 
+	called = set()
+
 	def nodef(addr):
-		return alh.ALHProxy(coor, addr)
+		n = alh.ALHProxy(coor, addr)
+
+		if addr not in called:
+			n.post("prog/firstCall", "1")
+			called.add(addr)
+
+		return n
 	
-	time_start = time.time() + 10
+	time_start = time.time() + 15
 
 	#experiment = ism_24ghz(time_start, nodef)
 	#experiment = uhf_multiplex(time_start, nodef)
