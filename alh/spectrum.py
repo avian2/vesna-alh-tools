@@ -124,17 +124,6 @@ class SpectrumSensingRun:
 
 			p += max_read_size
 
-		# write data to file
-		filename = "rawfile_%d.bin" % (self.alh.addr)
-		raw_data_file = open(filename, "wb")
-		raw_data_file.write(data)
-		raw_data_file.close()
-
-		pickle_filename = "rawfile_%d.dump" % (self.alh.addr)
-		pickle_file = open(pickle_filename, "w")
-		pickle.dump(data, pickle_file)
-		pickle_file.close()
-
 		return self._decode(data)
 
 class MultiNodeSpectrumSensingRun:
