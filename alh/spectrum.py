@@ -5,6 +5,10 @@ import time
 import alh
 import pickle
 
+class Sweep:
+	def __init__(self):
+		self.data = []
+
 class SpectrumSensingRun:
 	def __init__(self, alh, time_start, time_duration, 
 			device, config, ch_start, ch_step, ch_stop, slot_id):
@@ -45,28 +49,37 @@ class SpectrumSensingRun:
 
 	def _decode(self, data):
 		sweep_len = len(range(self.ch_start, self.ch_stop, self.ch_step))
+		line_len = sweep_len + 2
 
 		sweeps = []
-		sweep = []
+		sweep = Sweep()
 
 		for n in xrange(0, len(data), 2):
 			datum = data[n:n+2]
 			if len(datum) != 2:
 				continue
 
-			if(n % sweep_len < 4 ):
+			if(n % line_len == 0):
 				# got a time-stamp
-				print "got a timestamp";
+				t = data[n:n+4]
+				tt = struct.unpack("<I", t)[0]
+				assert(not sweep.data)
+				sweep.timestamp = tt
+				continue
+
+			if(n % line_len == 2):
+				# second part of a time-stamp, just ignore
+				assert(len(sweep.data) == 0)
 				continue
 
 			dbm = struct.unpack("h", datum)[0]*1e-2
-			sweep.append(dbm)
+			sweep.data.append(dbm)
 
-			if(len(sweep) >= sweep_len):
+			if(len(sweep.data) >= sweep_len):
 				sweeps.append(sweep)
-				sweep = []
+				sweep = Sweep()
 
-		if(sweep):
+		if(sweep.data):
 			sweeps.append(sweep)
 
 		return sweeps
@@ -112,10 +125,15 @@ class SpectrumSensingRun:
 			p += max_read_size
 
 		# write data to file
-		filename = "rawfile_%d" % (self.alh.addr)
-		raw_data_file = open(filename, "w")
-		pickle.dump(data, raw_data_file)
+		filename = "rawfile_%d.bin" % (self.alh.addr)
+		raw_data_file = open(filename, "wb")
+		raw_data_file.write(data)
 		raw_data_file.close()
+
+		pickle_filename = "rawfile_%d.dump" % (self.alh.addr)
+		pickle_file = open(pickle_filename, "w")
+		pickle.dump(data, pickle_file)
+		pickle_file.close()
 
 		return self._decode(data)
 
@@ -188,10 +206,13 @@ def write_results(path, results, multinoderun):
 		outf.write("# t [s]\tf [Hz]\tP [dBm]\n")
 
 		sweep_len = len(range(run.ch_start, run.ch_stop, run.ch_step))
-		for sweepn, sweep in enumerate(result):
-			for dbmn, dbm in enumerate(sweep):
+		for sweepnr, sweep in enumerate(result):
+			# TODO in case multiple sweeps have been done in the same second,
+			#	properly extrapolate
+			assert(isinstance(sweep, Sweep))
+			for dbmn, dbm in enumerate(sweep.data):
 
-				time = float(sweepn) + 1.0/sweep_len * dbmn
+				time = float(sweep.timestamp) + 1.0/sweep_len * dbmn
 
 				channel = run.ch_start + run.ch_step * dbmn
 				assert channel < run.ch_stop
