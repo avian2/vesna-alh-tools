@@ -3,7 +3,6 @@ import re
 import struct
 import time
 import alh
-import pickle
 
 class Sweep:
 	def __init__(self):
@@ -59,23 +58,23 @@ class SpectrumSensingRun:
 			if len(datum) != 2:
 				continue
 
-			if(n % line_len == 0):
+			if n % line_len == 0:
 				# got a time-stamp
 				t = data[n:n+4]
 				tt = struct.unpack("<I", t)[0]
-				assert(not sweep.data)
+				assert not sweep.data
 				sweep.timestamp = tt
 				continue
 
-			if(n % line_len == 2):
+			if n % line_len == 2:
 				# second part of a time-stamp, just ignore
-				assert(len(sweep.data) == 0)
+				assert len(sweep.data) == 0
 				continue
 
 			dbm = struct.unpack("h", datum)[0]*1e-2
 			sweep.data.append(dbm)
 
-			if(len(sweep.data) >= sweep_len):
+			if len(sweep.data) >= sweep_len:
 				sweeps.append(sweep)
 				sweep = Sweep()
 
@@ -86,7 +85,7 @@ class SpectrumSensingRun:
 
 	def retrieve(self):
 		resp = self.alh.get("sensing/slotInformation", "id=%d" % (self.slot_id,))
-		assert("status=COMPLETE" in resp)
+		assert "status=COMPLETE" in resp
 
 		g = re.search("size=([0-9]+)", resp)
 		total_size = int(g.group(1))
@@ -198,7 +197,7 @@ def write_results(path, results, multinoderun):
 		for sweepnr, sweep in enumerate(result):
 			# TODO in case multiple sweeps have been done in the same second,
 			#	properly extrapolate
-			assert(isinstance(sweep, Sweep))
+			assert isinstance(sweep, Sweep)
 			for dbmn, dbm in enumerate(sweep.data):
 
 				time = float(sweep.timestamp) + 1.0/sweep_len * dbmn
