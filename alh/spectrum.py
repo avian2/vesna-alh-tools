@@ -49,7 +49,7 @@ class SpectrumSensingRun:
 
 	def _decode(self, data):
 		sweep_len = len(range(self.ch_start, self.ch_stop, self.ch_step))
-		line_len = sweep_len + 2
+		line_bytes = sweep_len * 2 + 4
 
 		sweeps = []
 		sweep = Sweep()
@@ -59,7 +59,7 @@ class SpectrumSensingRun:
 			if len(datum) != 2:
 				continue
 
-			if n % line_len == 0:
+			if n % line_bytes == 0:
 				# got a time-stamp
 				t = data[n:n+4]
 				tt = struct.unpack("<I", t)[0]
@@ -67,9 +67,9 @@ class SpectrumSensingRun:
 				sweep.timestamp = tt * 1e-3
 				continue
 
-			if n % line_len == 2:
+			if n % line_bytes == 2:
 				# second part of a time-stamp, just ignore
-				assert len(sweep.data) == 0
+				assert not sweep.data
 				continue
 
 			dbm = struct.unpack("h", datum)[0]*1e-2
