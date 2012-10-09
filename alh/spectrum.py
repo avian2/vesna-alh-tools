@@ -1,8 +1,9 @@
+import alh
 import binascii
+import itertools
 import re
 import struct
 import time
-import alh
 
 class Sweep:
 	def __init__(self):
@@ -63,7 +64,7 @@ class SpectrumSensingRun:
 				t = data[n:n+4]
 				tt = struct.unpack("<I", t)[0]
 				assert not sweep.data
-				sweep.timestamp = tt
+				sweep.timestamp = tt * 1e-3
 				continue
 
 			if n % line_len == 2:
@@ -194,13 +195,22 @@ def write_results(path, results, multinoderun):
 		outf.write("# t [s]\tf [Hz]\tP [dBm]\n")
 
 		sweep_len = len(range(run.ch_start, run.ch_stop, run.ch_step))
-		for sweepnr, sweep in enumerate(result):
-			# TODO in case multiple sweeps have been done in the same second,
-			#	properly extrapolate
+
+		sweep_time = 0.0
+
+		next_sweep_i = iter(result)
+		next_sweep_i.next()
+		i = itertools.izip_longest(result, next_sweep_i)
+
+		for sweepnr, (sweep, next_sweep) in enumerate(i):
 			assert isinstance(sweep, Sweep)
+
+			if next_sweep is not None:
+				sweep_time = next_sweep.timestamp - sweep.timestamp
+
 			for dbmn, dbm in enumerate(sweep.data):
 
-				time = float(sweep.timestamp) + 1.0/sweep_len * dbmn
+				time = sweep.timestamp + sweep_time/sweep_len * dbmn
 
 				channel = run.ch_start + run.ch_step * dbmn
 				assert channel < run.ch_stop
