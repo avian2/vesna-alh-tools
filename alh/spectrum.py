@@ -126,6 +126,49 @@ class SpectrumSensingRun:
 
 		return self._decode(data)
 
+	def get_channel_frequencies(self):
+		# get the description
+		description = self.alh.get("sensing/deviceConfigList",
+								"devNum=%d" % (self.device))
+		# parse description
+		lines = description.split("\n")
+		# print "lines=", lines
+
+		cfg_name_line = lines[1 + 2*self.config]
+		# print "cfg_name_line",cfg_name_line
+
+		cfg_re = re.compile(" *cfg #(.*): (.*):(.*)")
+		cfg_matches = cfg_re.match(cfg_name_line).groups()
+		# print "got1: ", cfg_matches
+
+		assert int(cfg_matches[0]) == self.config
+		# cfg_desc = cfg_matches[1] # unused
+		# print "config_desc: ", cfg_desc
+
+		cfg_params_line = lines[2 + 2*self.config]
+		# print "cfg_params_line", cfg_params_line
+
+		par_re = re.compile(" *base: (.*) Hz, spacing: (.*) Hz, bw: (.*) Hz, channels: (.*), time: (.*) ms")
+		par_matches = par_re.match(cfg_params_line).groups()
+		# print "got2: ", par_matches
+
+		self.cfg_base_hz = long(par_matches[0])
+		self.cfg_spacing_hz = long(par_matches[1])
+		self.cfg_bw_hz = long(par_matches[2])
+		self.cfg_channel_count = int(par_matches[3])
+		self.cfg_channel_time_ms = int(par_matches[4])
+
+		assert self.ch_start <= self.cfg_channel_count
+		assert self.ch_stop <= self.cfg_channel_count
+
+		# calculate frequencies
+		start_freq_hz = self.cfg_base_hz + self.ch_start * self.cfg_spacing_hz
+		step_freq_hz = self.cfg_spacing_hz * self.ch_step
+		stop_freq_hz = self.cfg_base_hz + self.cfg_spacing_hz * self.ch_stop
+		self.frequencies_hz = range(start_freq_hz, stop_freq_hz, step_freq_hz)
+		# print "self.freqs:", self.frequencies_hz
+
+
 class MultiNodeSpectrumSensingRun:
 	def __init__(self, nodes, *args, **kwargs):
 
