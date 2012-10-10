@@ -228,6 +228,8 @@ def write_results(path, results, multinoderun):
 
 	for n, (result, run) in enumerate(zip(results, multinoderun.runs)):
 
+		run.get_channel_frequencies()
+
 		if hasattr(run.alh, "addr"):
 			name = "node_%d.dat" % (run.alh.addr,)
 		else:
@@ -249,7 +251,9 @@ def write_results(path, results, multinoderun):
 				channel = run.ch_start + run.ch_step * dbmn
 				assert channel < run.ch_stop
 
-				outf.write("%f\t%f\t%f\n" % (time, channel, dbm))
+				freq = run.frequencies_hz[channel]
+
+				outf.write("%f\t%f\t%f\n" % (time, freq, dbm))
 
 			outf.write("\n")
 
