@@ -49,7 +49,7 @@ class SpectrumSensingRun:
 
 	def _decode(self, data):
 		sweep_len = len(range(self.ch_start, self.ch_stop, self.ch_step))
-		line_len = sweep_len + 2
+		line_len = 2*sweep_len + 4
 
 		sweeps = []
 		sweep = Sweep()
