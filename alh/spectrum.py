@@ -1,7 +1,13 @@
+import alh
 import binascii
+import itertools
 import re
 import struct
 import time
+
+class Sweep:
+	def __init__(self):
+		self.data = []
 
 class SpectrumSensingRun:
 	def __init__(self, alh, time_start, time_duration, 
@@ -43,30 +49,44 @@ class SpectrumSensingRun:
 
 	def _decode(self, data):
 		sweep_len = len(range(self.ch_start, self.ch_stop, self.ch_step))
+		line_bytes = sweep_len * 2 + 4
 
 		sweeps = []
-		sweep = []
+		sweep = Sweep()
 
 		for n in xrange(0, len(data), 2):
 			datum = data[n:n+2]
 			if len(datum) != 2:
 				continue
 
+			if n % line_bytes == 0:
+				# got a time-stamp
+				t = data[n:n+4]
+				tt = struct.unpack("<I", t)[0]
+				assert not sweep.data
+				sweep.timestamp = tt * 1e-3
+				continue
+
+			if n % line_bytes == 2:
+				# second part of a time-stamp, just ignore
+				assert not sweep.data
+				continue
+
 			dbm = struct.unpack("h", datum)[0]*1e-2
-			sweep.append(dbm)
+			sweep.data.append(dbm)
 
-			if(len(sweep) >= sweep_len):
+			if len(sweep.data) >= sweep_len:
 				sweeps.append(sweep)
-				sweep = []
+				sweep = Sweep()
 
-		if(sweep):
+		if(sweep.data):
 			sweeps.append(sweep)
 
 		return sweeps
 
 	def retrieve(self):
 		resp = self.alh.get("sensing/slotInformation", "id=%d" % (self.slot_id,))
-		assert("status=COMPLETE" in resp)
+		assert "status=COMPLETE" in resp
 
 		g = re.search("size=([0-9]+)", resp)
 		total_size = int(g.group(1))
@@ -175,10 +195,22 @@ def write_results(path, results, multinoderun):
 		outf.write("# t [s]\tf [Hz]\tP [dBm]\n")
 
 		sweep_len = len(range(run.ch_start, run.ch_stop, run.ch_step))
-		for sweepn, sweep in enumerate(result):
-			for dbmn, dbm in enumerate(sweep):
 
-				time = float(sweepn) + 1.0/sweep_len * dbmn
+		sweep_time = 0.0
+
+		next_sweep_i = iter(result)
+		next_sweep_i.next()
+		i = itertools.izip_longest(result, next_sweep_i)
+
+		for sweepnr, (sweep, next_sweep) in enumerate(i):
+			assert isinstance(sweep, Sweep)
+
+			if next_sweep is not None:
+				sweep_time = next_sweep.timestamp - sweep.timestamp
+
+			for dbmn, dbm in enumerate(sweep.data):
+
+				time = sweep.timestamp + sweep_time/sweep_len * dbmn
 
 				channel = run.ch_start + run.ch_step * dbmn
 				assert channel < run.ch_stop
