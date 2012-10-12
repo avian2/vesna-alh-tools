@@ -1,6 +1,7 @@
 from alh import alh
 from alh.spectrum import *
 from alh.common import log
+import os
 import serial
 import string
 import sys
@@ -157,6 +158,10 @@ def main():
 
 	results = experiment.retrieve()
 
-	write_results("h", results, experiment)
+	try:
+		os.mkdir("data")
+	except OSError:
+		pass
+	write_results("data", results, experiment)
 
 main()
