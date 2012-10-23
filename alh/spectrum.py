@@ -9,16 +9,24 @@ class Sweep:
 	def __init__(self):
 		self.data = []
 
+class DeviceConfig:
+	def __init__(self, id):
+		self.id = id
+
+	def ch_to_hz(self, ch):
+		assert ch < self.num
+		return self.base + self.spacing * ch
+
 class SpectrumSensingRun:
 	def __init__(self, alh, time_start, time_duration, 
-			device, config, ch_start, ch_step, ch_stop, slot_id):
+			device_id, config_id, ch_start, ch_step, ch_stop, slot_id):
 
 		self.alh = alh
 
 		self.time_start = time_start
 		self.time_duration = time_duration
-		self.device = device
-		self.config = config
+		self.device_id = device_id
+		self.config_id = config_id
 		self.ch_start = ch_start
 		self.ch_step = ch_step
 		self.ch_stop = ch_stop
@@ -33,8 +41,8 @@ class SpectrumSensingRun:
 			"in %d sec for %d sec with dev %d conf %d ch %d:%d:%d to slot %d" % (
 				relative_time,
 				self.time_duration,
-				self.device,
-				self.config,
+				self.device_id,
+				self.config_id,
 				self.ch_start,
 				self.ch_step,
 				self.ch_stop,
@@ -126,48 +134,40 @@ class SpectrumSensingRun:
 
 		return self._decode(data)
 
-	def get_channel_frequencies(self):
+	def get_device_config(self):
 		# get the description
 		description = self.alh.get("sensing/deviceConfigList",
-								"devNum=%d" % (self.device))
+								"devNum=%d" % (self.device_id))
 		# parse description
 		lines = description.split("\n")
 		# print "lines=", lines
 
-		cfg_name_line = lines[1 + 2*self.config]
+		cfg_name_line = lines[1 + 2*self.config_id]
 		# print "cfg_name_line",cfg_name_line
 
 		cfg_re = re.compile(" *cfg #(.*): (.*):(.*)")
 		cfg_matches = cfg_re.match(cfg_name_line).groups()
 		# print "got1: ", cfg_matches
 
-		assert int(cfg_matches[0]) == self.config
+		assert int(cfg_matches[0]) == self.config_id
 		# cfg_desc = cfg_matches[1] # unused
 		# print "config_desc: ", cfg_desc
 
-		cfg_params_line = lines[2 + 2*self.config]
+		cfg_params_line = lines[2 + 2*self.config_id]
 		# print "cfg_params_line", cfg_params_line
 
 		par_re = re.compile(" *base: (.*) Hz, spacing: (.*) Hz, bw: (.*) Hz, channels: (.*), time: (.*) ms")
 		par_matches = par_re.match(cfg_params_line).groups()
 		# print "got2: ", par_matches
 
-		self.cfg_base_hz = long(par_matches[0])
-		self.cfg_spacing_hz = long(par_matches[1])
-		self.cfg_bw_hz = long(par_matches[2])
-		self.cfg_channel_count = int(par_matches[3])
-		self.cfg_channel_time_ms = int(par_matches[4])
+		config = DeviceConfig(self.config_id)
+		config.base = int(par_matches[0])
+		config.spacing = int(par_matches[1])
+		config.bw = int(par_matches[2])
+		config.num = int(par_matches[3])
+		config.time = int(par_matches[4])
 
-		assert self.ch_start <= self.cfg_channel_count
-		assert self.ch_stop <= self.cfg_channel_count
-
-		# calculate frequencies
-		start_freq_hz = self.cfg_base_hz + self.ch_start * self.cfg_spacing_hz
-		step_freq_hz = self.cfg_spacing_hz * self.ch_step
-		stop_freq_hz = self.cfg_base_hz + self.cfg_spacing_hz * self.ch_stop
-		self.frequencies_hz = range(start_freq_hz, stop_freq_hz, step_freq_hz)
-		# print "self.freqs:", self.frequencies_hz
-
+		return config
 
 class MultiNodeSpectrumSensingRun:
 	def __init__(self, nodes, *args, **kwargs):
@@ -190,14 +190,14 @@ class MultiNodeSpectrumSensingRun:
 
 class SignalGenerationRun:
 	def __init__(self, alh, time_start, time_duration, 
-			device, config, channel, power):
+			device_id, config_id, channel, power):
 
 		self.alh = alh
 
 		self.time_start = time_start
 		self.time_duration = time_duration
-		self.device = device
-		self.config = config
+		self.device_id = device_id
+		self.config_id = config_id
 		self.channel = channel
 		self.power = power
 
@@ -208,8 +208,8 @@ class SignalGenerationRun:
 			"in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
 				relative_time,
 				self.time_duration,
-				self.device,
-				self.config,
+				self.device_id,
+				self.config_id,
 				self.channel,
 				self.power))
 
@@ -228,7 +228,7 @@ def write_results(path, results, multinoderun):
 
 	for n, (result, run) in enumerate(zip(results, multinoderun.runs)):
 
-		run.get_channel_frequencies()
+		config = run.get_device_config()
 
 		if hasattr(run.alh, "addr"):
 			name = "node_%d.dat" % (run.alh.addr,)
@@ -260,7 +260,7 @@ def write_results(path, results, multinoderun):
 				channel = run.ch_start + run.ch_step * dbmn
 				assert channel < run.ch_stop
 
-				freq = run.frequencies_hz[channel]
+				freq = config.ch_to_hz(channel)
 
 				outf.write("%f\t%f\t%f\n" % (time, freq, dbm))
 
