@@ -12,7 +12,8 @@ setup(name='vesna-alhtools',
 
       packages = [ 'alh' ],
       scripts = [ 'scripts/alh-reprogram',
-	      'scripts/alh-map' ],
+	      'scripts/alh-map',
+	      'scripts/alh-tx-test' ],
 
       provides = [ 'alh' ],
 )

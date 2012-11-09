@@ -1,0 +1,57 @@
+#!/usr/bin/python
+from alh import alh
+from alh import common
+from alh.spectrum import SignalGenerationRun
+import datetime
+import glob
+from optparse import OptionParser
+import os
+import re
+import sys
+import time
+
+def get_neigbors(node):
+	neighbors = []
+
+	try:
+		r = node.get("radio/neighbors")
+	except Exception, e:
+		sys.excepthook(*sys.exc_info())
+		return neighbors
+
+	for line in r.split("\r\n"):
+		fields = line.split(" | ")
+		if len(fields) == 6:
+			try:
+				neighbors.append(int(fields[3]))
+			except ValueError:
+				pass
+
+	return neighbors
+
+def main():
+	parser = OptionParser(usage="%prog [options]")
+	common.add_communication_options(parser)
+
+	(options, args) = parser.parse_args()
+
+	coordinator = common.get_coordinator(options)
+	coordinator.post("prog/firstcall", "1")
+
+	for node_id in get_neigbors(coordinator):
+		node = alh.ALHProxy(coordinator, node_id)
+		node.post("prog/firstcall", "1")
+		node.post("prog/runningFirmwareIsValid", "1")
+
+		time_start = time.time()
+
+		SignalGenerationRun(
+				node,
+				time_start = time_start,
+				time_duration = 10,
+				device_id = 0,
+				config_id = 0,
+				channel = 127,
+				power = 0).program()
+
+main()
