@@ -38,7 +38,10 @@ class SpectrumSensingRun:
 		self.alh.post("sensing/freeUpDataSlot", "1", "id=%d" % (self.slot_id))
 
 		time_before = time.time()
-		relative_time = max(0, int(self.time_start - time_before))
+
+		relative_time = int(self.time_start - time_before)
+		if relative_time < 0:
+			raise Exception("Start time can't be in the past")
 
 		self.alh.post("sensing/program",
 			"in %d sec for %d sec with dev %d conf %d ch %d:%d:%d to slot %d" % (
@@ -215,7 +218,10 @@ class SignalGenerationRun:
 
 	def program(self):
 		time_before = time.time()
-		relative_time = max(0, int(self.time_start - time_before))
+
+		relative_time = int(self.time_start - time_before)
+		if relative_time < 0:
+			raise Exception("Start time can't be in the past")
 
 		self.alh.post("generator/program",
 			"in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
