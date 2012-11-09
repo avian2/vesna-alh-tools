@@ -18,6 +18,8 @@ class DeviceConfig:
 		return self.base + self.spacing * ch
 
 class SpectrumSensingRun:
+	MAX_TIME_ERROR = 2.0
+
 	def __init__(self, alh, time_start, time_duration, 
 			device_id, config_id, ch_start, ch_step, ch_stop, slot_id):
 
@@ -35,7 +37,8 @@ class SpectrumSensingRun:
 	def program(self):
 		self.alh.post("sensing/freeUpDataSlot", "1", "id=%d" % (self.slot_id))
 
-		relative_time = max(0, int(self.time_start - time.time()))
+		time_before = time.time()
+		relative_time = max(0, int(self.time_start - time_before))
 
 		self.alh.post("sensing/program",
 			"in %d sec for %d sec with dev %d conf %d ch %d:%d:%d to slot %d" % (
@@ -47,6 +50,13 @@ class SpectrumSensingRun:
 				self.ch_step,
 				self.ch_stop,
 				self.slot_id))
+
+		time_after = time.time()
+
+		time_error = time_after - time_before
+		if time_error > self.MAX_TIME_ERROR:
+			raise Exception("Programming time error %.1f s > %.1fs" % 
+					(time_error, self.MAX_TIME_ERROR))
 
 	def is_complete(self):
 		if time.time() < self.time_start + self.time_duration:
@@ -189,6 +199,8 @@ class MultiNodeSpectrumSensingRun:
 		return [ run.retrieve() for run in self.runs ]
 
 class SignalGenerationRun:
+	MAX_TIME_ERROR = 2.0
+
 	def __init__(self, alh, time_start, time_duration, 
 			device_id, config_id, channel, power):
 
@@ -202,7 +214,8 @@ class SignalGenerationRun:
 		self.power = power
 
 	def program(self):
-		relative_time = max(0, int(self.time_start - time.time()))
+		time_before = time.time()
+		relative_time = max(0, int(self.time_start - time_before))
 
 		self.alh.post("generator/program",
 			"in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
@@ -212,6 +225,13 @@ class SignalGenerationRun:
 				self.config_id,
 				self.channel,
 				self.power))
+
+		time_after = time.time()
+
+		time_error = time_after - time_before
+		if time_error > self.MAX_TIME_ERROR:
+			raise Exception("Programming time error %.1f s > %.1fs" % 
+					(time_error, self.MAX_TIME_ERROR))
 
 class MultiNodeSignalGenerationRun:
 	def __init__(self, nodes, *args, **kwargs):
