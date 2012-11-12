@@ -37,7 +37,6 @@ def sanity_check_passed(options, firmware):
 		print "Input file is in ELF format. You have to use a plain binary file."
 		return False
 
-
 	return True
 
 def upload_firmware(target, firmware, slot_id):
@@ -127,7 +126,7 @@ def main():
 	if options.input:
 		firmware = open(options.input).read()
 
-		if not sanity_check_passed(options, firmware):
+		if (not sanity_check_passed(options, firmware)) and (not options.force):
 			print "Use --force to program anyway."
 			return -1
 
