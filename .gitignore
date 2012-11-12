@@ -1,2 +1,18 @@
+# eclipse stuff
+.project
+.pydevproject
+# python intermediate
 *.pyc
+# output data
+*.csv
+*.dat
+*.png
+*.ps
+# editor files
+*~
+# serialized objects
+*.pickle
+# build dir
 build
+# data
+examples/data*
