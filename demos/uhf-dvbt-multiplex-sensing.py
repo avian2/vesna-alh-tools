@@ -1,6 +1,7 @@
-from alh import alh
-from alh.spectrum import *
-from alh.common import log
+from vesna import alh
+from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorProgram
+from vesna.alh.common import log
+
 import os
 import string
 import sys
@@ -21,37 +22,47 @@ def main():
 	coor_kabelnet = alh.ALHWeb(get_communicator_url(), 10004)
 	coor_kabelnet._log = log
 
-	node_19 = alh.ALHProxy(coor_industrial_zone, 19)
-	node_20 = alh.ALHProxy(coor_industrial_zone, 20)
-	node_47 = alh.ALHProxy(coor_kabelnet, 47)
+	#coor_jsi_test = alh.ALHWeb(get_communicator_url(), 9502)
+	#coor_jsi_test._log = log
+
+	nodes = [	#alh.ALHProxy(coor_jsi_test, 18),
+			alh.ALHProxy(coor_industrial_zone, 19),
+			alh.ALHProxy(coor_industrial_zone, 20),
+			alh.ALHProxy(coor_kabelnet, 47),
+	]
+
+	sensors = map(SpectrumSensor, nodes)
+
+	config_list = sensors[0].get_config_list()
+
+	sweep_config = config_list.get_sweep_config(
+			start_hz=546000000, stop_hz=586000000, step_hz=500000)
+
+	assert sweep_config is not None
 
 	time_start = time.time() + 15
+	program = SpectrumSensorProgram(sweep_config, time_start, time_duration=30, slot_id=5)
 
-	experiment = MultiNodeSpectrumSensingRun(
-			[node_19, node_20, node_47],
-			time_start = time_start,
-			time_duration = 20,
-			device_id = 0,
-			config_id = 0,
-			ch_start = 76000,
-			ch_step = 500,
-			ch_stop = 116000,
-			slot_id = 5)
+	for sensor in sensors:
+		sensor.program(program)
 
-	experiment.program()
+	for sensor in sensors:
+		while not sensor.is_complete(program):
+			print "waiting..."
+			time.sleep(2)
 
-	while not experiment.is_complete():
-		print "waiting..."
-		time.sleep(2)
+			if time.time() > (program.time_start + program.time_duration + 60):
+				raise Exception("Something went wrong")
 
-	print "experiment is finished. retrieving data."
+		print "experiment is finished. retrieving data."
 
-	results = experiment.retrieve()
+		result = sensor.retrieve(program)
 
-	try:
-		os.mkdir("data")
-	except OSError:
-		pass
-	write_results("data", results, experiment)
+		try:
+			os.mkdir("data")
+		except OSError:
+			pass
+
+		result.write("data/node_%d.dat" % (sensor.alh.addr,))
 
 main()

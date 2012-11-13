@@ -146,15 +146,27 @@ set loadpath
 set fontpath 
 set fit noerrorvariables
 GNUTERM = "wxt"
-set term wxt 0
+
+set output "data/node_19.png"
+set term png size 1024,768
 set title "DVB-T multiplex @ 562 MHz, industrial zone, node 19, Super ScanStick antenna"
-plot "data/node_19.dat" using ($2/1e6):3
+plot "data/node_19.dat" using ($2/1e6):3 with linespoints
 
-set term wxt 1
+#set term wxt 0
+#replot
+
+set output "data/node_20.png"
+set term png size 1024,768
 set title "DVB-T multiplex @ 562 MHz, industrial zone, node 20, SuperGainer antenna"
-plot "data/node_20.dat" using ($2/1e6):3
+plot "data/node_20.dat" using ($2/1e6):3 with linespoints
 
-set term wxt 2
+#set term wxt 1
+#replot
+
+set output "data/node_47.png"
+set term png size 1024,768
 set title "DVB-T multiplex @ 562 MHz, kabelnet, node 47, Super ScanStick antenna"
-plot "data/node_47.dat" using ($2/1e6):3
-#    EOF
+plot "data/node_47.dat" using ($2/1e6):3 with linespoints
+
+#set term wxt 2
+#replot
