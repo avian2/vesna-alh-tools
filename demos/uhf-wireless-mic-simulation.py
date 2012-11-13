@@ -33,17 +33,18 @@ def main():
 	tx_config = config_list.get_tx_config(0, 0)
 
 	node_8.program( SignalGeneratorProgram(
-		config_list.get_tx_config(f_hz=785000000, power_dbm=0),
+		config_list.get_tx_config(f_hz=825000000, power_dbm=0),
 		time_start=time_start+5,
 		time_duration=50) )
 
-	node_10.program( SignalGeneratorProgram(
-		config_list.get_tx_config(f_hz=805000000, power_dbm=0),
-		time_start=time_start+5,
-		time_duration=50) )
+	for n in range(4):
+		node_10.program( SignalGeneratorProgram(
+			config_list.get_tx_config(f_hz=805000000+n*1000000, power_dbm=0),
+			time_start=time_start+5+n*10,
+			time_duration=10) )
 
 	node_7.program( SignalGeneratorProgram(
-		config_list.get_tx_config(f_hz=825000000, power_dbm=0),
+		config_list.get_tx_config(f_hz=785000000, power_dbm=0),
 		time_start=time_start+5,
 		time_duration=50) )
 
