@@ -96,9 +96,7 @@ class SpectrumSensor:
 			return "status=COMPLETE" in resp
 
 	def _decode(self, program, data):
-		# -1 below is a work-around for an off-by-one error somewhere in the spectrum sensing
-		# resource handler
-		num_channels = program.sweep_config.num_channels - 1
+		num_channels = program.sweep_config.num_channels
 		line_bytes = num_channels * 2 + 4
 
 		result = SpectrumSensorResult(program)
@@ -206,53 +204,3 @@ class SpectrumSensor:
 				continue
 
 		return config_list
-
-class SignalGenerationRun:
-	MAX_TIME_ERROR = 2.0
-
-	def __init__(self, alh, time_start, time_duration, 
-			device_id, config_id, channel, power):
-
-		self.alh = alh
-
-		self.time_start = time_start
-		self.time_duration = time_duration
-		self.device_id = device_id
-		self.config_id = config_id
-		self.channel = channel
-		self.power = power
-
-	def program(self):
-		time_before = time.time()
-
-		relative_time = int(self.time_start - time_before)
-		if relative_time < 0:
-			raise Exception("Start time can't be in the past")
-
-		self.alh.post("generator/program",
-			"in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
-				relative_time,
-				self.time_duration,
-				self.device_id,
-				self.config_id,
-				self.channel,
-				self.power))
-
-		time_after = time.time()
-
-		time_error = time_after - time_before
-		if time_error > self.MAX_TIME_ERROR:
-			raise Exception("Programming time error %.1f s > %.1fs" % 
-					(time_error, self.MAX_TIME_ERROR))
-
-class MultiNodeSignalGenerationRun:
-	def __init__(self, nodes, *args, **kwargs):
-
-		self.runs = [
-			SignalGenerationRun(node, *args, **kwargs)
-			for node in nodes ]
-
-	def program(self):
-		for run in self.runs:
-			run.program()
-
