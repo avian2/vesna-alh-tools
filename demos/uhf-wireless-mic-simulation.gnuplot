@@ -128,7 +128,7 @@ set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set zrange [ * : * ] noreverse nowriteback  # (currently [-95.0000:-55.0000] )
 set cblabel "P [dBm]" 
 set cblabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set cbrange [ -110 : -80 ] noreverse nowriteback  # (currently [-95.0000:-55.0000] )
+set cbrange [ -105 : -75 ] noreverse nowriteback  # (currently [-95.0000:-55.0000] )
 set zero 1e-08
 set lmargin  -1
 set bmargin  -1

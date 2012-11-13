@@ -20,7 +20,7 @@ def main():
 	coor_industrial_zone = alh.ALHWeb(get_communicator_url(), 10001)
 	coor_industrial_zone._log = log
 
-	time_start = time.time() + 15
+	time_start = time.time() + 30
 
 	# Set up transmissions
 
@@ -32,21 +32,23 @@ def main():
 
 	tx_config = config_list.get_tx_config(0, 0)
 
-	node_8.program( SignalGeneratorProgram(
-		config_list.get_tx_config(f_hz=825000000, power_dbm=0),
-		time_start=time_start+5,
-		time_duration=50) )
-
-	for n in range(4):
-		node_10.program( SignalGeneratorProgram(
-			config_list.get_tx_config(f_hz=805000000+n*1000000, power_dbm=0),
-			time_start=time_start+5+n*10,
+	for n in range(10):
+		node_8.program( SignalGeneratorProgram(
+			config_list.get_tx_config(f_hz=825000000-n*4000000, power_dbm=0),
+			time_start=time_start+10+n*10,
 			time_duration=10) )
 
-	node_7.program( SignalGeneratorProgram(
-		config_list.get_tx_config(f_hz=785000000, power_dbm=0),
-		time_start=time_start+5,
-		time_duration=50) )
+	for n in range(10):
+		node_10.program( SignalGeneratorProgram(
+			config_list.get_tx_config(f_hz=785000000+n*4000000, power_dbm=0),
+			time_start=time_start+10+n*10,
+			time_duration=10) )
+
+	for n in range(10):
+		node_7.program( SignalGeneratorProgram(
+			config_list.get_tx_config(f_hz=800000000+n*4000000, power_dbm=0),
+			time_start=time_start+10+n*10,
+			time_duration=10) )
 
 	# Set up spectrum sensing
 
@@ -63,7 +65,7 @@ def main():
 	# resource handler
 	sweep_config.num_channels -= 1
 
-	program = SpectrumSensorProgram(sweep_config, time_start, time_duration=60, slot_id=5)
+	program = SpectrumSensorProgram(sweep_config, time_start, time_duration=120, slot_id=5)
 
 	for sensor in sensors:
 		sensor.program(program)
