@@ -28,7 +28,7 @@ class DeviceConfig:
 	def covers(self, f_hz, power_dbm):
 		"""Return true if this configuration can cover the given band
 		"""
-		return start_hz >= self.get_start_hz() and stop_hz <= self.get_stop_hz() and \
+		return f_hz >= self.get_start_hz() and f_hz <= self.get_stop_hz() and \
 				power_dbm >= self.min_power and power_dbm <= self.max_power
 
 	def get_tx_config(self, f_hz, power_dbm):
@@ -76,14 +76,14 @@ class ConfigList:
 		candidates = []
 
 		for config in self.configs:
-			if config.covers(start_hz, stop_hz):
+			if config.covers(f_hz, power_dbm):
 				candidates.append(config)
 
 		# pick fastest matching config
 		candidates.sort(key=lambda x:x.time, reverse=True)
 
 		if candidates:
-			return candidates[0].get_tx_config(start_hz, stop_hz, step_hz)
+			return candidates[0].get_tx_config(f_hz, power_dbm)
 		else:
 			return None
 
