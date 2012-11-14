@@ -6,14 +6,37 @@ import serial
 import struct
 import time
 from optparse import OptionParser, OptionGroup
+from urlparse import urlparse
+import socket
 
-def sanity_check_passed(options):
+def sanity_check_passed(options, firmware):
 	if options.node and "node" not in options.input:
+		print "You are reprogramming a node, but file name doesn't contain 'node'."
 		return False
-	if options.coordinator and "coordinator" not in options.input:
+
+	if options.coordinator:
+		if "coordinator" not in options.input:
+			print "You are reprogramming the coordinator, but file name doesn't contain " \
+				"'coordinator'."
+			return False
+
+		if options.url:
+			host = urlparse(options.url).hostname
+			ip = socket.gethostbyname(host)
+			if ip not in firmware:
+				print "Your selected communicator IP doesn't appear in the firmare. " \
+					"Are you using an image for a different clusrer?"
+				return False
+
+		if options.cluster_id and str(options.cluster_id) not in firmware:
+			print "Your selected cluster ID doesn't appear in the firmware. " \
+				"Are you using an image for a different cluster?"
+			return False
+
+	if firmware.startswith("\x7fELF"):
+		print "Input file is in ELF format. You have to use a plain binary file."
 		return False
-	if not options.input.endswith(".bin"):
-		return False
+
 	return True
 
 def upload_firmware(target, firmware, slot_id):
@@ -101,11 +124,12 @@ def main():
 		return -1
 
 	if options.input:
-		if not sanity_check_passed(options):
-			print "Input file name does not match parameters. Use --force to program anyway."
+		firmware = open(options.input).read()
+
+		if (not sanity_check_passed(options, firmware)) and (not options.force):
+			print "Use --force to program anyway."
 			return -1
 
-		firmware = open(options.input).read()
 		upload_firmware(target, firmware, options.slot_id)
 		print "Reprogramming done."
 
