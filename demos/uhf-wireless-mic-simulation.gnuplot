@@ -128,7 +128,7 @@ set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set zrange [ * : * ] noreverse nowriteback  # (currently [-95.0000:-55.0000] )
 set cblabel "P [dBm]" 
 set cblabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set cbrange [ -105 : -75 ] noreverse nowriteback  # (currently [-95.0000:-55.0000] )
+set cbrange [ -100 : -80 ] noreverse nowriteback  # (currently [-95.0000:-55.0000] )
 set zero 1e-08
 set lmargin  -1
 set bmargin  -1
@@ -149,11 +149,11 @@ GNUTERM = "wxt"
 
 set output "./data/node_19.png"
 set term png size 1024,768
-set title "Industrial zone, spectrum sensing node 19"
+set title "Industrial zone, spectrum sensing node 19, Super ScanStick antenna"
 splot "./data/node_19.dat" using ($2/1e6):1:3
 
-set output "./data/node_20.png"
-set term png size 1024,768
-set title "Industrial zone, spectrum sensing node 20"
-splot "./data/node_20.dat" using ($2/1e6):1:3
+#set output "./data/node_20.png"
+#set term png size 1024,768
+#set title "Industrial zone, spectrum sensing node 20"
+#splot "./data/node_20.dat" using ($2/1e6):1:3
 #    EOF
