@@ -3,8 +3,6 @@ import itertools
 import re
 import time
 
-from vesna.spectrumsensor import Device, DeviceConfig, ConfigList, SweepConfig, Sweep
-
 class Device:
 	def __init__(self, id, name):
 		self.id = id
