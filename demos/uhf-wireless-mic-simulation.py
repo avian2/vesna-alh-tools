@@ -24,6 +24,10 @@ def main():
 
 	# Set up transmissions
 
+	for node_id in [10, 8, 7]:
+		node = alh.ALHProxy(coor_industrial_zone, node_id)
+		node.post("prog/firstCall", "1")
+
 	su1 = SignalGenerator(alh.ALHProxy(coor_industrial_zone, 10))
 	su2 = SignalGenerator(alh.ALHProxy(coor_industrial_zone, 8))
 	mic = SignalGenerator(alh.ALHProxy(coor_industrial_zone, 7))
@@ -95,7 +99,7 @@ def main():
 			print "waiting..."
 			time.sleep(2)
 
-			if time.time() > (program.time_start + program.time_duration + 60):
+			if time.time() > (program.time_start + program.time_duration + 30):
 				raise Exception("Something went wrong")
 
 		print "experiment is finished. retrieving data."

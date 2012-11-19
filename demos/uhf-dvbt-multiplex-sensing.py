@@ -31,6 +31,9 @@ def main():
 			alh.ALHProxy(coor_kabelnet, 47),
 	]
 
+	for node in nodes:
+		node.post("prog/firstCall", "1")
+
 	sensors = map(SpectrumSensor, nodes)
 
 	config_list = sensors[0].get_config_list()
@@ -54,7 +57,7 @@ def main():
 			print "waiting..."
 			time.sleep(2)
 
-			if time.time() > (program.time_start + program.time_duration + 60):
+			if time.time() > (program.time_start + program.time_duration + 30):
 				raise Exception("Something went wrong")
 
 		print "experiment is finished. retrieving data."
