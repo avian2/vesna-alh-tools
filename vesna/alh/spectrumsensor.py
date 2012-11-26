@@ -1,4 +1,3 @@
-import alh
 import binascii
 import itertools
 import re
@@ -6,6 +5,7 @@ import struct
 import time
 
 from vesna.spectrumsensor import Device, DeviceConfig, ConfigList, SweepConfig, Sweep
+from vesna.alh import CRCError
 
 class SpectrumSensorProgram:
 	def __init__(self, sweep_config, time_start, time_duration, slot_id):
@@ -166,7 +166,7 @@ class SpectrumSensor:
 			our_crc = binascii.crc32(chunk_data)
 
 			if(their_crc != our_crc):
-				raise alh.CRCError
+				raise CRCError
 
 			data += chunk_data
 
