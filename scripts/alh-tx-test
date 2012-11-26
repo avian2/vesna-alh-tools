@@ -1,12 +1,8 @@
 #!/usr/bin/python
-from alh import alh
-from alh import common
-from alh.spectrum import SignalGenerationRun
-import datetime
-import glob
+from vesna.alh import alh, common
+from vesna.alh.signalgenerator import SignalGenerator, SignalGeneratorProgram, TxConfig
+
 from optparse import OptionParser
-import os
-import re
 import sys
 import time
 
@@ -43,15 +39,16 @@ def main():
 		node.post("prog/firstcall", "1")
 		node.post("prog/runningFirmwareIsValid", "1")
 
-		time_start = time.time()
+		generator = SignalGenerator(node)
 
-		SignalGenerationRun(
-				node,
-				time_start = time_start,
-				time_duration = 10,
-				device_id = 0,
-				config_id = 0,
-				channel = 127,
-				power = 0).program()
+		config_list = generator.get_config_list()
+		device_config = config_list.get_config(0, 0)
+
+		time_start = time.time() + 1
+
+		generator.program( SignalGeneratorProgram(
+			TxConfig(device_config, 127, 0),
+			time_start=time_start,
+			time_duration=10))
 
 main()

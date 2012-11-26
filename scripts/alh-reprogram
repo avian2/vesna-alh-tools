@@ -1,6 +1,5 @@
 #!/usr/bin/python
-from alh import alh
-from alh import common
+from vesna.alh import alh, common
 import binascii
 import serial
 import struct

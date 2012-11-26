@@ -10,10 +10,11 @@ setup(name='vesna-alhtools',
       author='Tomaz Solc',
       author_email='tomaz.solc@tablix.org',
 
-      packages = [ 'alh' ],
+      packages = [ 'vesna/alh' ],
       scripts = [ 'scripts/alh-reprogram',
 	      'scripts/alh-map',
 	      'scripts/alh-tx-test' ],
 
-      provides = [ 'alh' ],
+      requires = [ 'vesna' ],
+      provides = [ 'vesna.alh' ],
 )
