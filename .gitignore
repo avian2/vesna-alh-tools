@@ -1,4 +1,14 @@
+# eclipse stuff
+.project
+.pydevproject
+# python intermediate
 *.pyc
+# output data
+*.csv
+*.dat
+*.png
+*.ps
+# build dir
 build
 credentials
 data
