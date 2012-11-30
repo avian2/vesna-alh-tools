@@ -22,10 +22,37 @@ class ALHRandomError(ALHException): pass
 
 class CRCError(ALHException): pass
 
-"""Almost-like-HTTP protocol handler
-"""
 class ALHProtocol:
+	"""Base class for an ALH protocol service.
+
+	This is an abstract class with some useful private methods.
+
+	Implementations of this interface should override _get() and _post() methods.
+	"""
 	RETRIES = 5
+
+	def get(self, resource, *args):
+		"""Issue a GET request to the service.
+
+		Returns the string reply from the resource handler or raises an
+		ALHException in case of an error.
+
+		resource -- resource to issue request to
+		args -- arbitrary string arguments for the request.
+		"""
+		self._get(resource, *args)
+
+	def post(self, resource, data, *args):
+		"""Issue a POST request to the service
+
+		Returns the string reply from the resource handler or raises an
+		ALHException in case of an error.
+
+		resource -- resource to issue request to
+		data -- POST data to attach to the request
+		args -- arbitrary string arguments for the request
+		"""
+		self._post(resource, data, *args)
 
 	def _log(self, msg):
 		pass
@@ -43,9 +70,14 @@ class ALHProtocol:
 					print "Retrying (%d)..." % (retry+1)
 
 class ALHTerminal(ALHProtocol):
+	"""ALH protocol implementation through a serial terminal."""
 	RESPONSE_TERMINATOR = "\r\nOK\r\n"
 
 	def __init__(self, f):
+		"""Create a new ALHTerminal object.
+
+		f -- Path to the character device of the terminal
+		"""
 		self.f = f
 
 	def _send(self, data):
@@ -79,11 +111,11 @@ class ALHTerminal(ALHProtocol):
 		self._log(resp)
 		return resp
 
-	def get(self, resource, *args):
+	def _get(self, resource, *args):
 		arg = "".join(args)
 		return self._send_with_retry("get %s?%s\r\n" % (resource, arg))
 
-	def post(self, resource, data, *args):
+	def _post(self, resource, data, *args):
 		arg = "".join(args)
 
 		req = "post %s?%s\r\nlength=%d\r\n%s\r\n" % (
@@ -96,7 +128,18 @@ class ALHTerminal(ALHProtocol):
 		return self._send_with_retry(req)
 
 class ALHWeb(ALHProtocol):
+	"""ALH protocol implementation through the HTTP infrastructure server."""
+
 	def __init__(self, base_url, cluster_id):
+		"""Create a new ALHWeb object.
+
+		Note: if the API end-point is using basic authentication, you will be
+		prompted for credentials on the command line unless you specify the
+		user name and password in the URL
+
+		base_url -- Base URL of the HTTP API (e.g. https://crn.log-a-tec.eu/communicator)
+		cluster_id -- Numerical cluster id
+		"""
 		self.base_url = base_url
 		self.cluster_id = cluster_id
 
@@ -125,7 +168,7 @@ class ALHWeb(ALHProtocol):
 		self._log(resp)
 		return resp
 
-	def get(self, resource, *args):
+	def _get(self, resource, *args):
 
 		arg = "".join(args)
 		query = (
@@ -138,7 +181,7 @@ class ALHWeb(ALHProtocol):
 
 		return self._send_with_retry(url)
 
-	def post(self, resource, data, *args):
+	def _post(self, resource, data, *args):
 
 		arg = "".join(args)
 		query = (
@@ -153,7 +196,20 @@ class ALHWeb(ALHProtocol):
 		return self._send_with_retry(url)
 
 class ALHProxy(ALHProtocol):
+	"""ALH protocol implementation through an ALH proxy.
+
+	This implementation forwards arbitrary ALH requests through the "nodes"
+	resource on an ALH service used as a proxy.
+
+	Proxy is typically used to access nodes on the ZigBee mesh network behind
+	the coordinator.
+	"""
 	def __init__(self, alhproxy, addr):
+		"""Create a new ALHProxy object.
+
+		alhproxy -- ALH implementation used as a proxy
+		addr -- ZigBee address of the node to forward requests to
+		"""
 		self.alhproxy = alhproxy
 		self.addr = addr
 
@@ -166,17 +222,16 @@ class ALHProxy(ALHProtocol):
 			assert(int(g.group(1)) == self.addr)
 			self._recover_remote()
 
-	def get(self, resource, *args):
+	def _get(self, resource, *args):
 		try:
 			return self.alhproxy.get("nodes", "%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError, e:
 			self._check_for_junk_state(str(e))
 			raise
 
-	def post(self, resource, data, *args):
+	def _post(self, resource, data, *args):
 		try:
 			return self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError, e:
 			self._check_for_junk_state(str(e))
 			raise
-

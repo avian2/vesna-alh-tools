@@ -8,18 +8,37 @@ from vesna.spectrumsensor import Device, DeviceConfig, ConfigList, SweepConfig, 
 from vesna.alh import CRCError
 
 class SpectrumSensorProgram:
+	"""Describes a single spectrum sensing task."""
+
 	def __init__(self, sweep_config, time_start, time_duration, slot_id):
+		"""Create a new spectrum sensing task.
+
+		sweep_config -- Frequency sweep configuration to use.
+		time_start -- Time to start the task (UNIX timestamp).
+		time_duration -- Duration of the task in seconds.
+		slot_id -- Numerical slot id used for storing measurements.
+		"""
 		self.sweep_config = sweep_config
 		self.time_start = time_start
 		self.time_duration = time_duration
 		self.slot_id = slot_id
 
 class SpectrumSensorResult:
+	"""Result of a spectrum sensing task."""
+
 	def __init__(self, program):
+		"""Create a new result object.
+
+		program -- SpectrumSensorProgram object that produced these results.
+		"""
 		self.program = program
 		self.sweeps = []
 
 	def write(self, path):
+		"""Write measurements into a tab-separated-values file.
+
+		path -- path to the file to write
+		"""
 
 		outf = open(path, "w")
 
@@ -55,12 +74,21 @@ class SpectrumSensorResult:
 		outf.close()
 
 class SpectrumSensor:
+	"""ALH node acting as a spectrum sensor."""
 	MAX_TIME_ERROR = 2.0
 
 	def __init__(self, alh):
+		"""Create a spectrum sensor based on an ALH implementation.
+
+		alh -- ALH implementation used to communicate with the node
+		"""
 		self.alh = alh
 
 	def program(self, program):
+		"""Send the given spectrum sensing program to the node.
+
+		program -- SpectrumSensorProgram object
+		"""
 
 		self.alh.post("sensing/freeUpDataSlot", "1", "id=%d" % (program.slot_id))
 
@@ -89,6 +117,10 @@ class SpectrumSensor:
 					(time_error, self.MAX_TIME_ERROR))
 
 	def is_complete(self, program):
+		"""Return true if given program has been successfuly completed.
+
+		program -- SpectrumSensorProgram object
+		"""
 		if time.time() < program.time_start + program.time_duration:
 			return False
 		else:
@@ -133,6 +165,12 @@ class SpectrumSensor:
 		return result
 
 	def retrieve(self, program):
+		"""Retrieve results from the given spectrum sensing program.
+
+		Returns an SpectrumSensorResult object.
+
+		program -- SpectrumSensorProgram object
+		"""
 		resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
 		assert "status=COMPLETE" in resp
 
@@ -175,6 +213,10 @@ class SpectrumSensor:
 		return self._decode(program, data)
 
 	def get_config_list(self):
+		"""Query and return the list of supported device configurations.
+
+		Returns a ConfigList object.
+		"""
 		config_list = ConfigList()
 
 		device = None

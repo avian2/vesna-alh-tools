@@ -1,0 +1,90 @@
+Introduction
+============
+
+This package provides utilities and Python modules for managing VESNA-based
+wireless sensor networks that are using the ALH protocol.
+
+In a typical setup, VESNA nodes participate in a ZigBee-based wireless mesh
+network. On this mesh network each sensor node exposes a HTTP-like interface,
+supporting two types of requests: GET for state-less information retrieval
+and POST for state-changing actions. In addition to participating in the
+mesh network, the ZigBee network coordinator node also exposes the ALH
+protocol over a TCP/IP SSL tunnel or a serial line. Usually, the tunnel
+terminates in an infrastructure server that performs the translation
+between ALH and a proper HTTP REST interface exposed on the web.
+
++------+
+| node | ALH -  ZigBee mesh
++------+      \
+              |                      SSL tunnel
++------+      |      +-------------+            +----------------+
+| node | ALH -+- ALH | coordinator | ALH ------ | infrastructure | HTTPS -->
++------+      |      +-------------+            +----------------+
+              |
++------+      /
+| node | ALH -
++------+
+
+These tools support either talking to the network over the infrastructure's
+HTTP interface or directly to the coordinator over the serial line.
+
+
+Installation
+============
+
+To install system-wide, run:
+
+$ python setup.py install
+
+You also need to install Python bindings for VESNA spectrum sensor
+application. You can get it at:
+
+https://github.com/sensorlab/vesna-spectrum-sensor
+
+See its own README file for installation instructions.
+
+
+Usage
+=====
+
+After installation, the following tools are available:
+
+  alh-reprogram -- Perform over-the-air reprogramming of the coordinator or
+                   sensor nodes.
+
+  alh-map       -- Enumerate all the nodes participating in the sensor
+                   network by crawling the ZigBee mesh.
+
+		   Can be used for visualizing the network using Graphviz
+		   or network monitoring (via integration into Munin).
+
+  alh-tx-test   -- Signal generator test.
+
+Run each with "--help" as the only argument to get a list of available
+options.
+
+
+Several Python modules are installed as well. Refer to docstring
+documentation for details.
+
+
+License
+=======
+
+Copyright (C) 2012 SensorLab, Jozef Stefan Institute
+http://sensorlab.ijs.si
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+Authors:	Tomaz Solc, <tomaz.solc@ijs.si>
