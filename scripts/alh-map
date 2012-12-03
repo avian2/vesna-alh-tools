@@ -260,6 +260,8 @@ def main():
 			help="Output a DOT file")
 	parser.add_option("-m", "--munin", dest="do_munin", action="store_true",
 			help="Output a directory for the Munin plug-in")
+	parser.add_option("-M", "--munin-interval", dest="munin_interval", type="float",
+			help="Munin polling interval")
 
 	(options, args) = parser.parse_args()
 
@@ -279,7 +281,16 @@ def main():
 					outf.write("n%d -> n%d\n" % (current_id, next_id))
 		outf.write("}\n")
 	elif options.do_munin:
-		do_munin(options, visited)
+		while True:
+			do_munin(options, visited)
+
+			if not options.munin_interval:
+				break
+
+			print "Updated ", datetime.datetime.now()
+
+			time.sleep(options.munin_interval)
+			visited = traverse_network(options)
 	else:
 		do_stats(options, visited)
 
