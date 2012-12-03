@@ -40,7 +40,7 @@ class ALHProtocol:
 		resource -- resource to issue request to
 		args -- arbitrary string arguments for the request.
 		"""
-		self._get(resource, *args)
+		return self._get(resource, *args)
 
 	def post(self, resource, data, *args):
 		"""Issue a POST request to the service
@@ -52,7 +52,7 @@ class ALHProtocol:
 		data -- POST data to attach to the request
 		args -- arbitrary string arguments for the request
 		"""
-		self._post(resource, data, *args)
+		return self._post(resource, data, *args)
 
 	def _log(self, msg):
 		pass
