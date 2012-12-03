@@ -1,6 +1,6 @@
 #!/usr/bin/python
-from alh import alh
-from alh import common
+from vesna import alh
+from vesna.alh import common
 import datetime
 import glob
 from optparse import OptionParser
