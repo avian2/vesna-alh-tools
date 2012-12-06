@@ -42,10 +42,6 @@ def main():
 			start_hz=546000000, stop_hz=586000000, step_hz=500000)
 	assert sweep_config is not None
 
-	# -1 below is a work-around for an off-by-one error somewhere in the spectrum sensing
-	# resource handler
-	sweep_config.num_channels -= 1
-
 	time_start = time.time() + 15
 	program = SpectrumSensorProgram(sweep_config, time_start, time_duration=30, slot_id=5)
 
