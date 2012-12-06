@@ -162,7 +162,9 @@ class ALHWeb(ALHProtocol):
 
 		# this usually, but not always, means something went
 		# wrong.
-		if "error" in resp.lower() or "warning" in resp.lower():
+		r = resp.lower()
+		r.replace("bus errors  :", "")
+		if "error" in r or "warning" in r:
 			raise ALHRandomError(resp)
 		
 		self._log(resp)
