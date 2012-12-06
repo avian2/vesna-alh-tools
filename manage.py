@@ -1,6 +1,6 @@
 #!/usr/bin/bpython -i
-import alh.common
-import alh.alh
+import vesna.alh.common
+import vesna.alh
 from optparse import OptionParser, OptionGroup
 
 def hello(options):
@@ -21,16 +21,16 @@ def main():
 	global coor
 	parser = OptionParser(usage="%prog [options]")
 
-	alh.common.add_communication_options(parser)
+	vesna.alh.common.add_communication_options(parser)
 	(options, args) = parser.parse_args()
 
-	coor = alh.common.get_coordinator(options)
+	coor = vesna.alh.common.get_coordinator(options)
 	coor.post("prog/firstcall", "1")
 
 	hello(options)
 
 def node(addr):
 	global coor
-	return alh.alh.ALHProxy(coor, addr)
+	return vesna.alh.alh.ALHProxy(coor, addr)
 
 main()
