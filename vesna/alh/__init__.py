@@ -69,6 +69,19 @@ class ALHProtocol:
 					sys.excepthook(*sys.exc_info())
 					print "Retrying (%d)..." % (retry+1)
 
+	def _check_for_sneaky_error(self, resp):
+		# This is extremely ugly. But since we don't have
+		# currently any consistent way of specifying whether
+		# a request failed or not, we check if the response
+		# contains any strings that look like error messages.
+
+		r = resp.lower()
+		r = r.replace("bus errors  :", "")
+		r = r.replace("   : 0 (error)", "")
+		if "error" in r or "warning" in r:
+			raise ALHRandomError(resp)
+
+
 class ALHTerminal(ALHProtocol):
 	"""ALH protocol implementation through a serial terminal."""
 	RESPONSE_TERMINATOR = "\r\nOK\r\n"
@@ -103,10 +116,7 @@ class ALHTerminal(ALHProtocol):
 		if resp.endswith("CORRUPTED-DATA\r\n"):
 			raise CorruptedData(resp)
 
-		# this usually, but not always, means something went
-		# wrong.
-		if "error" in resp.lower() or "warning" in resp.lower():
-			raise ALHRandomError(resp)
+		self._check_for_sneaky_error(resp)
 
 		self._log(resp)
 		return resp
@@ -160,12 +170,7 @@ class ALHWeb(ALHProtocol):
 
 			time.sleep(1)
 
-		# this usually, but not always, means something went
-		# wrong.
-		r = resp.lower()
-		r.replace("bus errors  :", "")
-		if "error" in r or "warning" in r:
-			raise ALHRandomError(resp)
+		self._check_for_sneaky_error(resp)
 		
 		self._log(resp)
 		return resp
