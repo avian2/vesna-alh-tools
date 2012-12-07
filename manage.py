@@ -31,6 +31,6 @@ def main():
 
 def node(addr):
 	global coor
-	return vesna.alh.alh.ALHProxy(coor, addr)
+	return vesna.alh.ALHProxy(coor, addr)
 
 main()
