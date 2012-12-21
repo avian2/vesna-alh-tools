@@ -30,8 +30,10 @@ uptime.label = uptime
 	def fetch(self, node):
 		uptime = float(node.get("uptime").strip())
 
-		# uptime doesn't start counting from 0
-		uptime -= 1325376000.0
+		# old version don't count uptime from 0
+		old_uptime_offset = 1325376000.0
+		if uptime >= old_uptime_offset:
+			uptime -= old_uptime_offset
 
 		self.value = uptime / 86400.0
 
