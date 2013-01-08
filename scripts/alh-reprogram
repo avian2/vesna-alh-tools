@@ -39,12 +39,20 @@ def sanity_check_passed(options, firmware):
 
 	return True
 
-def upload_firmware(target, firmware, slot_id):
+def upload_firmware(target, firmware, slot_id, start_chunk):
 	start_time = time.time()
 
 	target.post("prog/nextFirmwareSlotId", "%d" % (slot_id,), "admin")
-	target.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
-	target.post("prog/nextEraseSlotId", "%d" % (slot_id,))
+
+	if start_chunk > 0:
+		resp = target.get("prog/nextFirmwareSize")
+		size = int(resp.split()[1])
+		if len(firmware) != size:
+			raise Exception("Firmware size and slot size doesn't match. "
+				"Are you restarting upload with --start-chunk from a different file?")
+	else:
+		target.post("prog/nextFirmwareSize", "%d" % (len(firmware),))
+		target.post("prog/nextEraseSlotId", "%d" % (slot_id,))
 
 	chunk_size = 512
 	total_size = len(firmware)
@@ -59,7 +67,10 @@ def upload_firmware(target, firmware, slot_id):
 
 		chunk = chunk_data + struct.pack(">i", chunk_data_crc)
 
-		target.post("firmware", chunk)
+		if chunk_num < start_chunk:
+			print "Skipping chunk", chunk_num
+		else:
+			target.post("firmware", chunk)
 
 		p += chunk_size
 		chunk_num += 1
@@ -101,6 +112,8 @@ def main():
 			help="Use SD card slot ID for upload")
 	parser.add_option("--force", dest="force", action="store_true",
 			help="Force reprogramming even when sanity checks fail")
+	parser.add_option("--start-chunk", dest="start_chunk", metavar="NUM", type="int", default=0,
+			help="Skip uploading firmware until chunk NUM")
 
 	(options, args) = parser.parse_args()
 
@@ -130,7 +143,7 @@ def main():
 			print "Use --force to program anyway."
 			return -1
 
-		upload_firmware(target, firmware, options.slot_id)
+		upload_firmware(target, firmware, options.slot_id, options.start_chunk)
 		print "Reprogramming done."
 
 	if options.reboot:
