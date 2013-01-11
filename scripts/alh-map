@@ -23,6 +23,7 @@ graph_scale no
 graph_vlabel uptime in days
 graph_category SNC
 uptime.label = uptime
+uptime.min = 0
 """
 
 	LABEL = "uptime"
