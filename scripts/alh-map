@@ -16,6 +16,22 @@ class NodeResource:
 	def munin_write(self, outf):
 		outf.write("%s.value %f\n" % (self.LABEL, self.value))
 
+class NodeFritzBoxUptime(NodeResource):
+	MUNIN_CONFIG = """graph_title FritzBox uptime
+graph_args --base 1000 -l 0
+graph_scale no
+graph_vlabel uptime in hours
+graph_category SNE
+fbuptime.label = uptime
+fbuptime.min = 0
+"""
+
+	LABEL = "fbuptime"
+
+	def fetch(self, node):
+		uptime = float(node.get("fritzbox/uptime").strip())
+		self.value = uptime / 3600.0
+
 class NodeUptime(NodeResource):
 	MUNIN_CONFIG = """graph_title Uptime
 graph_args --base 1000 -l 0
@@ -138,22 +154,25 @@ class NodeInfo:
 		NodePingTime,
 		NodeUptime,
 		NodeMCUTemperature,
-		NodeRadioStatistics ]
+		NodeRadioStatistics,
+		NodeFritzBoxUptime ]
 
-	def __init__(self):
+	def __init__(self, node):
+		self.node = node
+
 		self.resources = dict(	(resource.LABEL, resource())
 					for resource in self.RESOURCES )
 
-	def fetch(self, node):
+	def fetch(self):
 		try:
-			node.post("prog/firstcall", "1")
+			self.node.post("prog/firstcall", "1")
 		except Exception, e:
 			sys.excepthook(*sys.exc_info())
 			return
 
 		for resource in self.resources.itervalues():
 			try:
-				resource.fetch(node)
+				resource.fetch(self.node)
 			except Exception, e:
 				sys.excepthook(*sys.exc_info())
 				pass
@@ -178,8 +197,8 @@ def get_neigbors(node):
 	return neighbors
 
 def query_node(node):
-	nodeinfo = NodeInfo()
-	nodeinfo.fetch(node)
+	nodeinfo = NodeInfo(node)
+	nodeinfo.fetch()
 	nodeinfo.neighbors = get_neigbors(node)
 	return nodeinfo
 
