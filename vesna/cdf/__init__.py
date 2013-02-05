@@ -1,6 +1,7 @@
 import datetime
 from lxml import etree
 import json
+import os.path
 import time
 import uuid
 import vesna.alh
@@ -70,7 +71,9 @@ class CDFExperiment:
 
 		self._unsaved_iterations = []
 
-		if not _xml_tree:
+		if _xml_tree:
+			self.xml_tree = _xml_tree
+		else:
 			self.xml_tree = etree.ElementTree(etree.XML("""<experimentDescription>
 	<experimentAbstract>
 	</experimentAbstract>
@@ -80,8 +83,6 @@ class CDFExperiment:
 			<stopFrequency>%(stop_hz)d</stopFrequency>
 		</radioFrequency>
 	</metaInformation>
-	<experimentIteration>
-	</experimentIteration>
 </experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz } ))
 
 			abstract = self.xml_tree.find("experimentAbstract")
@@ -132,6 +133,46 @@ class CDFExperiment:
 
 	def save(self, f):
 		self.xml_tree.write(f, pretty_print=True)
+
+	def save_all(self, path=None):
+		if path is None:
+			path = self.tag
+
+		cdf_path = path + ".cdf"
+		dat_path = path + ".dat"
+
+		try:
+			os.mkdir(dat_path)
+		except OSError:
+			pass
+
+		for iteration in self._unsaved_iterations:
+			iteration_ = etree.SubElement(self.xml_tree.getroot(), "experimentIteration")
+
+			time_ = etree.SubElement(iteration_, "time")
+
+			starttime_ = etree.SubElement(time_, "starttime")
+			starttime_.text = str(iteration.start_time)
+
+			endtime_ = etree.SubElement(time_, "endtime")
+			endtime_.text = str(iteration.end_time)
+
+			for i, sensor in enumerate(iteration.sensors):
+
+				n = "data_%d_node_%d_%d.dat" % (
+						iteration.start_time,
+						sensor.sensor.alh.addr,
+						i)
+				p = os.path.join(dat_path, n)
+
+				sensor.result.write(p)
+
+				tracefile_ = etree.SubElement(iteration_, "traceFile")
+				tracefile_.text = p
+
+		self.save(open(cdf_path, "w"))
+
+		self._unsaved_iterations = []
 
 	def add_credentials(self, base_url):
 		return base_url
@@ -208,13 +249,6 @@ class CDFExperiment:
 			self.log("*** experiment is finished. retrieving data.")
 
 			sensor.result = sensor.sensor.retrieve(sensor.program)
-
-			#try:
-			#	os.mkdir("data")
-			#except OSError:
-			#	pass
-			#
-			#result.write("data/node_%d.dat" % (sensor.alh.addr,))
 
 		self._unsaved_iterations.append(iteration)
 
