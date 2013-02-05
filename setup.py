@@ -34,13 +34,13 @@ setup(name='vesna-alhtools',
       author='Tomaz Solc',
       author_email='tomaz.solc@tablix.org',
 
-      packages = [ 'vesna/alh' ],
+      packages = [ 'vesna/alh', 'vesna/cdf' ],
       scripts = [ 'scripts/alh-reprogram',
 	      'scripts/alh-map',
 	      'scripts/alh-tx-test' ],
 
       requires = [ 'vesna' ],
-      provides = [ 'vesna.alh' ],
+      provides = [ 'vesna.alh', 'vesna.cdf' ],
 
       cmdclass = { 'test': TestCommand },
 )

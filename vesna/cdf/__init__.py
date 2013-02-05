@@ -1,8 +1,11 @@
 import datetime
 from lxml import etree
 import json
+import time
 import uuid
-from vesna import alh
+import vesna.alh
+import vesna.alh.spectrumsensor
+import vesna.alh.common
 
 _METADATA_HEADER = "Additional VESNA metadata follows:\n\n"
 
@@ -44,7 +47,7 @@ class CDFDevice:
 		return tree
 
 class CDFExperimentIteration:
-	def __init__(self, start_time, end_time, slot_id):
+	def __init__(self, start_time, end_time, slot_id=10):
 		self.start_time = start_time
 		self.end_time = end_time
 		self.slot_id = slot_id
@@ -134,7 +137,7 @@ class CDFExperiment:
 		return base_url
 
 	def log(self, msg):
-		alh.common.log(msg)
+		vesna.alh.common.log(msg)
 
 	def _get_coordinators(self):
 		coordinators = {}
@@ -142,8 +145,8 @@ class CDFExperiment:
 		for device in self.devices:
 			args = (device.base_url, device.cluster_id)
 			if args not in coordinators:
-				coordinator = alh.ALHWeb(*args)
-				coordinator = self.log
+				coordinator = vesna.alh.ALHWeb(*args)
+				coordinator._log = self.log
 
 				coordinator.post("prog/firstCall", "1")
 
@@ -152,13 +155,13 @@ class CDFExperiment:
 		return coordinators
 
 	def _get_nodes(self):
-		coordinators = self._get_coordinators(self)
+		coordinators = self._get_coordinators()
 
 		nodes = []
 
 		for device in self.devices:
 			coordinator = coordinators[device.base_url, device.cluster_id]
-			node = alh.ALHProxy(coordinator, device.addr)
+			node = vesna.alh.ALHProxy(coordinator, device.addr)
 
 			node.post("prog/firstCall", "1")
 
@@ -172,7 +175,7 @@ class CDFExperiment:
 		for node in self._get_nodes():
 			sensor = CDFExperimentSensor()
 
-			sensor.sensor = alh.spectrumsensor.SpectrumSensor(node)
+			sensor.sensor = vesna.alh.spectrumsensor.SpectrumSensor(node)
 
 			config_list = sensor.sensor.get_config_list()
 
@@ -183,7 +186,7 @@ class CDFExperiment:
 
 			assert sweep_config is not None
 
-			sensor.program = SpectrumSensorProgram(
+			sensor.program = vesna.alh.spectrumsensor.SpectrumSensorProgram(
 					sweep_config, 
 					iteration.start_time,
 					iteration.end_time - iteration.start_time,
@@ -204,7 +207,7 @@ class CDFExperiment:
 
 			self.log("*** experiment is finished. retrieving data.")
 
-			sensor.result = sensor.sensor.retrieve(program)
+			sensor.result = sensor.sensor.retrieve(sensor.program)
 
 			#try:
 			#	os.mkdir("data")
