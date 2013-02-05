@@ -1,6 +1,30 @@
 #!/usr/bin/python
 
-from distutils.core import setup
+from distutils.core import Command, setup
+import unittest
+
+UNITTESTS = [
+		"cdf",
+	]
+
+class TestCommand(Command):
+	user_options = [ ]
+
+	def initialize_options(self):
+		pass
+
+	def finalize_options(self):
+		pass
+
+	def run(self):
+		suite = unittest.TestSuite()
+
+		suite.addTests(
+			unittest.defaultTestLoader.loadTestsFromNames(
+				"tests." + test for test in UNITTESTS) )
+
+		result = unittest.TextTestRunner(verbosity=2).run(suite)
+
 
 setup(name='vesna-alhtools',
       version='0.1',
@@ -17,4 +41,6 @@ setup(name='vesna-alhtools',
 
       requires = [ 'vesna' ],
       provides = [ 'vesna.alh' ],
+
+      cmdclass = { 'test': TestCommand },
 )
