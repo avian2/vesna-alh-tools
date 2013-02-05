@@ -9,12 +9,7 @@ import sys
 import time
 
 def get_communicator_url():
-	try:
-		credentials = open("credentials").read().strip() + "@"
-	except IOError:
-		credentials = ""
-
-	return "https://%scrn.log-a-tec.eu/communicator" % (credentials,)
+	return "https://crn.log-a-tec.eu/communicator"
 
 def main():
 	coor_industrial_zone = alh.ALHWeb(get_communicator_url(), 10001)

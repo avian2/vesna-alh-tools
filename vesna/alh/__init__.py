@@ -1,8 +1,14 @@
 import binascii
+import os
 import re
 import sys
 import time
 import urllib
+
+SETTINGS_PATHS = [
+		'alhrc',
+		os.path.join(os.environ['HOME'], '.alhrc'),
+	]
 
 class ALHException(Exception): pass
 
@@ -21,6 +27,45 @@ class CorruptedData(ALHProtocolException):
 class ALHRandomError(ALHException): pass
 
 class CRCError(ALHException): pass
+
+class ALHURLOpener(urllib.FancyURLopener):
+	version = "vesna-alh-tools/1.0"
+
+	def prompt_user_passwd(self, host, realm):
+		for path in SETTINGS_PATHS:
+			try:
+				f = open(path)
+			except IOError:
+				continue
+
+			match = False
+			user = None
+			passwd = None
+
+			for line in f:
+				if line.startswith('#'):
+					continue
+
+				try:
+					key, value = line.strip().split()
+				except ValueError:
+					continue
+
+				if (key == 'Host'):
+					match = (value == host)
+					user = None
+					passwd = None
+				elif match and (key == 'User'):
+					user = value
+				elif match and (key == 'Password'):
+					passwd = value
+
+				if match and user and passwd:
+					return (user, passwd)
+
+		return urllib.FancyURLopener.prompt_user_passwd(self, host, realm)
+
+urllib._urlopener = ALHURLOpener()
 
 class ALHProtocol:
 	"""Base class for an ALH protocol service.
@@ -144,8 +189,16 @@ class ALHWeb(ALHProtocol):
 		"""Create a new ALHWeb object.
 
 		Note: if the API end-point is using basic authentication, you will be
-		prompted for credentials on the command line unless you specify the
-		user name and password in the URL
+		prompted for credentials on the command line.
+
+		You can also save credentials into either a file named ".alhrc" in your home
+		directory or "alhrc" in the current directory. Format of the file is as in
+		the following example:
+
+		Host example.com
+		User <username>
+		Password <password>
+		# more Host, User, Password lines can follow
 
 		base_url -- Base URL of the HTTP API (e.g. https://crn.log-a-tec.eu/communicator)
 		cluster_id -- Numerical cluster id
