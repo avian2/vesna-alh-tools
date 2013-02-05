@@ -74,7 +74,8 @@ class CDFExperiment:
 		if _xml_tree:
 			self.xml_tree = _xml_tree
 		else:
-			self.xml_tree = etree.ElementTree(etree.XML("""<experimentDescription>
+
+			t = """<experimentDescription>
 	<experimentAbstract>
 	</experimentAbstract>
 	<metaInformation>
@@ -83,7 +84,11 @@ class CDFExperiment:
 			<stopFrequency>%(stop_hz)d</stopFrequency>
 		</radioFrequency>
 	</metaInformation>
-</experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz } ))
+</experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz }
+
+			# remove whitespace - it's added later through pretty_print
+			t = t.replace("\t", "").replace("\n", "")
+			self.xml_tree = etree.ElementTree(etree.XML(t))
 
 			abstract = self.xml_tree.find("experimentAbstract")
 
@@ -132,7 +137,7 @@ class CDFExperiment:
 		return e
 
 	def save(self, f):
-		self.xml_tree.write(f, pretty_print=True)
+		self.xml_tree.write(f, pretty_print=True, encoding='utf8')
 
 	def save_all(self, path=None):
 		if path is None:
