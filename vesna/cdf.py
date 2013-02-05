@@ -1,5 +1,7 @@
+import datetime
 from lxml import etree
 import json
+import uuid
 from vesna import alh
 
 _METADATA_HEADER = "Additional VESNA metadata follows:\n\n"
@@ -30,16 +32,14 @@ class CDFDevice:
 	def _to_xml(self):
 		tree = etree.Element("device")
 
-		name = etree.Element("name")
+		name = etree.SubElement(tree, "name")
 		name.text = "VESNA node %d" % (self.addr,)
-		tree.append(name)
 
-		description = etree.Element("description")
+		description = etree.SubElement(tree, "description")
 		description.text = _metadata_encode({
 			"base_url": self.base_url,
 			"cluster_id": self.cluster_id,
 			"addr": self.addr})
-		tree.append(description)
 
 		return tree
 
@@ -52,19 +52,24 @@ class CDFExperimentIteration:
 class CDFExperimentSensor: pass
 
 class CDFExperiment:
-	def __init__(self, start_hz, stop_hz, step_hz, _xml_tree=None):
+	def __init__(self, title, summary, start_hz, stop_hz, step_hz, tag=None, _xml_tree=None):
 		self.devices = []
+		self.title = title
+		self.summary = summary
 		self.start_hz = start_hz
 		self.stop_hz = stop_hz
 		self.step_hz = step_hz
+
+		if tag is None:
+			tag = "vesna-alh-tools-" + str(uuid.uuid4())
+
+		self.tag = tag
 
 		self._unsaved_iterations = []
 
 		if not _xml_tree:
 			self.xml_tree = etree.ElementTree(etree.XML("""<experimentDescription>
 	<experimentAbstract>
-		<notes>
-		</notes>
 	</experimentAbstract>
 	<metaInformation>
 		<radioFrequency>
@@ -76,8 +81,24 @@ class CDFExperiment:
 	</experimentIteration>
 </experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz } ))
 
-			self.xml_tree.find("experimentAbstract/notes").text = _metadata_encode({
-				"step_hz": step_hz})
+			abstract = self.xml_tree.find("experimentAbstract")
+
+			title_ = etree.SubElement(abstract, "title")
+			title_.text = title
+
+			tag_ = etree.SubElement(abstract, "uniqueCREWTag")
+			tag_.text = tag
+
+			date_ = etree.SubElement(abstract, "releaseDate")
+			date_.text = str(datetime.datetime.now())
+
+			summary_ = etree.SubElement(abstract, "experimentSummary")
+			summary_.text = summary
+
+			etree.SubElement(abstract, "relatedExperiments")
+
+			notes_ = etree.SubElement(abstract, "notes")
+			notes_.text = _metadata_encode({"step_hz": step_hz})
 
 	def add_device(self, device, _add_to_tree=True):
 		self.devices.append(device)
@@ -92,10 +113,14 @@ class CDFExperiment:
 		start_hz = int(xml_tree.find("metaInformation/radioFrequency/startFrequency").text)
 		stop_hz = int(xml_tree.find("metaInformation/radioFrequency/stopFrequency").text)
 
+		title = xml_tree.find("experimentAbstract/title").text
+		summary = xml_tree.find("experimentAbstract/experimentSummary").text
+		tag = xml_tree.find("experimentAbstract/uniqueCREWTag").text
+
 		obj = _metadata_decode(xml_tree.find("experimentAbstract/notes").text)
 		step_hz = obj['step_hz']
 
-		e = cls(start_hz, stop_hz, step_hz, _xml_tree=xml_tree)
+		e = cls(title, summary, start_hz, stop_hz, step_hz, tag=tag, _xml_tree=xml_tree)
 
 		for device in xml_tree.findall("metaInformation/device"):
 			e.add_device(CDFDevice._from_xml(device), _add_to_tree=False)

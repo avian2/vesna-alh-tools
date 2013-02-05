@@ -38,7 +38,8 @@ class TestCDFMetadata(unittest.TestCase):
 
 class TestCDFExperiment(unittest.TestCase):
 	def test_create_save_load(self):
-		e = vesna.cdf.CDFExperiment(start_hz=1, stop_hz=10, step_hz=1)
+		e = vesna.cdf.CDFExperiment(title="test experiment", summary="test experiment",
+				start_hz=1, stop_hz=10, step_hz=1)
 		
 		d = vesna.cdf.CDFDevice("http://localhost", 10000, 1)
 		e.add_device(d)
@@ -51,9 +52,12 @@ class TestCDFExperiment(unittest.TestCase):
 		f.seek(0)
 		e2 = vesna.cdf.CDFExperiment.load(f)
 
+		self.assertEqual(e.title, e2.title)
+		self.assertEqual(e.summary, e2.summary)
 		self.assertEqual(e.start_hz, e2.start_hz)
 		self.assertEqual(e.stop_hz, e2.stop_hz)
 		self.assertEqual(e.step_hz, e2.step_hz)
+		self.assertEqual(e.tag, e2.tag)
 
 		self.assertEqual(e.devices[0].base_url, e2.devices[0].base_url)
 		self.assertEqual(e.devices[0].cluster_id, e2.devices[0].cluster_id)
