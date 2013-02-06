@@ -99,7 +99,7 @@ class CDFExperiment:
 			tag_.text = tag
 
 			date_ = etree.SubElement(abstract, "releaseDate")
-			date_.text = str(datetime.datetime.now())
+			date_.text = str(datetime.datetime.now().isoformat())
 
 			summary_ = etree.SubElement(abstract, "experimentSummary")
 			summary_.text = summary
@@ -157,10 +157,10 @@ class CDFExperiment:
 			time_ = etree.SubElement(iteration_, "time")
 
 			starttime_ = etree.SubElement(time_, "starttime")
-			starttime_.text = str(iteration.start_time)
+			starttime_.text = datetime.datetime.fromtimestamp(iteration.start_time).isoformat()
 
 			endtime_ = etree.SubElement(time_, "endtime")
-			endtime_.text = str(iteration.end_time)
+			endtime_.text = datetime.datetime.fromtimestamp(iteration.end_time).isoformat()
 
 			for i, sensor in enumerate(iteration.sensors):
 
