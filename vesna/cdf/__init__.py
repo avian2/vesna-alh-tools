@@ -75,6 +75,8 @@ class CDFExperiment:
 			self.xml_tree = _xml_tree
 		else:
 
+			now = datetime.datetime.now()
+
 			t = """<experimentDescription>
 	<experimentAbstract>
 	</experimentAbstract>
@@ -83,8 +85,27 @@ class CDFExperiment:
 			<startFrequency>%(start_hz)d</startFrequency>
 			<stopFrequency>%(stop_hz)d</stopFrequency>
 		</radioFrequency>
+		<date>%(date)s</date>
+		<traceDescription>
+			<format>Tab-separated-values file with timestamp, frequency, power triplets.</format>
+			<fileFormat>
+				<header>Comment line, starting with #</header>
+				<collectedMetrics>
+					<name>time</name>
+					<unitOfMeasurements>s</unitOfMeasurements>
+				</collectedMetrics>
+				<collectedMetrics>
+					<name>frequency</name>
+					<unitOfMeasurements>Hz</unitOfMeasurements>
+				</collectedMetrics>
+				<collectedMetrics>
+					<name>power</name>
+					<unitOfMeasurements>dBm</unitOfMeasurements>
+				</collectedMetrics>
+			</fileFormat>
+		</traceDescription>
 	</metaInformation>
-</experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz }
+</experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz, "date": now.isoformat() }
 
 			# remove whitespace - it's added later through pretty_print
 			t = t.replace("\t", "").replace("\n", "")
@@ -99,7 +120,7 @@ class CDFExperiment:
 			tag_.text = tag
 
 			date_ = etree.SubElement(abstract, "releaseDate")
-			date_.text = str(datetime.datetime.now().isoformat())
+			date_.text = now.isoformat()
 
 			summary_ = etree.SubElement(abstract, "experimentSummary")
 			summary_.text = summary
