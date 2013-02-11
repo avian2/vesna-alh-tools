@@ -1,24 +1,23 @@
 from vesna import alh
 from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorProgram
-from vesna.alh.common import log
 
+import logging
 import os
 import string
 import sys
 import time
+
+logging.basicConfig(level=logging.INFO)
 
 def get_communicator_url():
 	return "https://crn.log-a-tec.eu/communicator"
 
 def main():
 	coor_industrial_zone = alh.ALHWeb(get_communicator_url(), 10001)
-	coor_industrial_zone._log = log
 
 	coor_kabelnet = alh.ALHWeb(get_communicator_url(), 10004)
-	coor_kabelnet._log = log
 
 	#coor_jsi_test = alh.ALHWeb(get_communicator_url(), 9502)
-	#coor_jsi_test._log = log
 
 	nodes = [	#alh.ALHProxy(coor_jsi_test, 18),
 			alh.ALHProxy(coor_industrial_zone, 19),

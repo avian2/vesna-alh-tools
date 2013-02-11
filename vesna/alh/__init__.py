@@ -1,6 +1,8 @@
 import binascii
+import logging
 import os
 import re
+import string
 import sys
 import time
 import urllib
@@ -9,6 +11,8 @@ SETTINGS_PATHS = [
 		'alhrc',
 		os.path.join(os.environ['HOME'], '.alhrc'),
 	]
+
+log = logging.getLogger(__name__)
 
 class ALHException(Exception): pass
 
@@ -99,8 +103,15 @@ class ALHProtocol:
 		"""
 		return self._post(resource, data, *args)
 
-	def _log(self, msg):
-		pass
+	def _log_request(self, method, resource, args):
+		log.info("%8s: %s?%s" % (method, resource, "".join(args)))
+
+	def _log_response(self, resp):
+		if all(c in string.printable for c in resp):
+			resp_ascii = resp.strip().decode("ascii", "ignore")
+			log.info("response: %s" % (resp_ascii,))
+		else:
+			log.info("unprintable response (%d bytes)" % (len(resp),))
 
 	def _send_with_retry(self, data):
 
@@ -111,8 +122,7 @@ class ALHProtocol:
 				if retry == self.RETRIES - 1:
 					raise e
 				else:
-					sys.excepthook(*sys.exc_info())
-					print "Retrying (%d)..." % (retry+1)
+					log.exception("retrying (%d)" % (retry+1,))
 
 	def _check_for_sneaky_error(self, resp):
 		# This is extremely ugly. But since we don't have
@@ -162,15 +172,19 @@ class ALHTerminal(ALHProtocol):
 			raise CorruptedData(resp)
 
 		self._check_for_sneaky_error(resp)
+		self._log_response(resp)
 
-		self._log(resp)
 		return resp
 
 	def _get(self, resource, *args):
+		self._log_request("GET", resource, args)
+
 		arg = "".join(args)
 		return self._send_with_retry("get %s?%s\r\n" % (resource, arg))
 
 	def _post(self, resource, data, *args):
+		self._log_request("POST", resource, args)
+
 		arg = "".join(args)
 
 		req = "post %s?%s\r\nlength=%d\r\n%s\r\n" % (
@@ -219,16 +233,17 @@ class ALHWeb(ALHProtocol):
 			if resp != "ERROR: Communication in progress":
 				break
 
-			self._log("Communication in progress...")
+			log.info("communication in progress")
 
 			time.sleep(1)
 
 		self._check_for_sneaky_error(resp)
 		
-		self._log(resp)
+		self._log_response(resp)
 		return resp
 
 	def _get(self, resource, *args):
+		self._log_request("GET", resource, args)
 
 		arg = "".join(args)
 		query = (
@@ -242,6 +257,7 @@ class ALHWeb(ALHProtocol):
 		return self._send_with_retry(url)
 
 	def _post(self, resource, data, *args):
+		self._log_request("POST", resource, args)
 
 		arg = "".join(args)
 		query = (

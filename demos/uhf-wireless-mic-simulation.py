@@ -1,19 +1,20 @@
 from vesna import alh
 from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorProgram
 from vesna.alh.signalgenerator import SignalGenerator, SignalGeneratorProgram, TxConfig
-from vesna.alh.common import log
 
+import logging
 import os
 import string
 import sys
 import time
+
+logging.basicConfig(level=logging.INFO)
 
 def get_communicator_url():
 	return "https://crn.log-a-tec.eu/communicator"
 
 def main():
 	coor_industrial_zone = alh.ALHWeb(get_communicator_url(), 10001)
-	coor_industrial_zone._log = log
 
 	time_start = time.time() + 30
 
