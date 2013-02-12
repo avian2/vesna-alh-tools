@@ -1,11 +1,14 @@
 import binascii
 import itertools
+import logging
 import re
 import struct
 import time
 
 from vesna.spectrumsensor import Device, DeviceConfig, ConfigList, SweepConfig, Sweep
 from vesna.alh import CRCError
+
+log = logging.getLogger(__name__)
 
 class SpectrumSensorProgram:
 	"""Describes a single spectrum sensing task."""
@@ -83,6 +86,48 @@ class SpectrumSensor:
 		alh -- ALH implementation used to communicate with the node
 		"""
 		self.alh = alh
+
+	def sweep(self, sweep_config):
+		"""Perform a single frequency sweep and return results
+		immediately
+
+		sweep_config -- Frequency sweep configuration to use.
+		"""
+
+		response = self.alh.post("sensing/quickSweepBin",
+				"dev %d conf %d ch %d:%d:%d" % (
+				sweep_config.config.device.id,
+				sweep_config.config.id,
+				sweep_config.start_ch,
+				sweep_config.step_ch,
+				sweep_config.stop_ch))
+
+		data = response[:-4]
+		crc = response[-4:]
+
+		their_crc = struct.unpack("i", crc[-4:])[0]
+		our_crc = binascii.crc32(data)
+		if their_crc != our_crc:
+			# Firmware versions 2.29 only calculate CRC on the
+			# first half of the response due to a bug
+			our_crc = binascii.crc32(data[:len(data)/2])
+			if their_crc != our_crc:
+				raise CRCError
+			else:
+				log.warning("working around broken CRC calculation! "
+						"please upgrade node firmware")
+
+		assert sweep_config.num_channels * 2 == len(data)
+
+		sweep = Sweep()
+		sweep.timestamp = 0
+		for n in xrange(0, len(data), 2):
+			datum = data[n:n+2]
+
+			dbm = struct.unpack("h", datum)[0]*1e-2
+			sweep.data.append(dbm)
+
+		return sweep
 
 	def program(self, program):
 		"""Send the given spectrum sensing program to the node.
