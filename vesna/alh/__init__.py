@@ -228,12 +228,14 @@ class ALHWeb(ALHProtocol):
 	def _send_with_error(self, url):
 		# loop until communication channel is free and our request
 		# goes through.
+		time_start = time.time()
 		while True:
 			resp = self._send(url)
 			if resp != "ERROR: Communication in progress":
 				break
 
-			log.info("communication in progress")
+			log.info("communicator is busy (have been waiting for %d s)" %
+					(time.time() - time_start))
 
 			time.sleep(1)
 
