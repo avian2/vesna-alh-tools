@@ -307,7 +307,15 @@ class ALHProxy(ALHProtocol):
 
 	def _post(self, resource, data, *args):
 		try:
-			return self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
+			response = self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError, e:
 			self._check_for_junk_state(str(e))
 			raise
+
+		# For POST requests, coordinator adds some string at the start
+		# of the response.
+
+		# Clean it up here, so that responses via proxy are identical
+		# to responses with direct connection.
+		response = re.sub("^Node #%d return;" % (self.addr,), "", response)
+		return response
