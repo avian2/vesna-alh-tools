@@ -2,6 +2,9 @@
 import vesna.alh.common
 import vesna.alh
 from optparse import OptionParser, OptionGroup
+import logging
+
+logging.basicConfig(format='--- %(levelname)s:%(message)s', level=logging.INFO)
 
 def hello(options):
 	print "Hi."
