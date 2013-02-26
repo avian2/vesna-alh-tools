@@ -146,5 +146,5 @@ set loadpath
 set fontpath 
 set fit noerrorvariables
 GNUTERM = "wxt"
-splot "./06-programmed-sensing.dat" using ($2/1e6):1:3
+splot "./06-programmed-tasks.dat" using ($2/1e6):1:3
 #    EOF

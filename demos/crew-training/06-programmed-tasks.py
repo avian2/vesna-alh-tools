@@ -77,6 +77,6 @@ def main():
 	result = sensor.retrieve(sensor_program)
 
 	# Write results into a CSV file.
-	result.write("06-programmed-sensing.dat")
+	result.write("06-programmed-tasks.dat")
 
 main()
