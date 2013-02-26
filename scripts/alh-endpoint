@@ -1,0 +1,116 @@
+#!/usr/bin/python
+import BaseHTTPServer
+import socket
+import ssl
+import traceback
+import urlparse
+from vesna import alh
+
+class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+	def __init__(self, alh, *args, **kwargs):
+		self.alh = alh
+		BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
+
+	def _error(self, status, message):
+		self.send_response(status)
+		self.send_header("Content-type", "text/plain")
+		self.end_headers()
+		self.wfile.write(message)
+
+	def do_GET_unsafe(self):
+		parsed = urlparse.urlparse(self.path)
+
+		if parsed.path != '/communicator':
+			self._error(404, "Path not found: %s" % (parsed.path,))
+			return
+
+		query = urlparse.parse_qs(parsed.query)
+
+		method = query['method'][0].lower()
+		resource = query['resource'][0]
+
+		if method == 'get':
+			resp = self.alh.get(resource)
+		elif method == 'post':
+			data = query['content'][0]
+			resp = self.alh.post(resource, data)
+		else:
+			self._error(400, "Invalid method: %s" % (method,))
+			return
+
+		self.send_response(200)
+		self.send_header("Content-type", "text/plain")
+		self.end_headers()
+		self.wfile.write(resp)
+
+	def do_GET(self):
+		try:
+			self.do_GET_unsafe()
+		except Exception:
+			self._error(500, traceback.format_exc())
+
+class HTTPRequestHandlerFactory:
+	def __init__(self, handler_class, alh):
+		self.alh = alh
+		self.handler_class = handler_class
+
+	def __call__(self, *args, **kwargs):
+		o = self.handler_class(self.alh, *args, **kwargs)
+		return o
+
+def deal_with_client(connstream):
+	print "call"
+	while True:
+		print "loop"
+		connstream.write("GET hello?" + "x"*520 + "\r\n")
+		#c = 520
+		#for n in xrange(520/c):
+		#	connstream.sendall("x"*c)
+		#	#print "write"
+		#connstream.sendall("\r\n")
+
+		resp = ""
+		while True:
+			data = connstream.read()
+			if not data:
+				return
+
+			resp += data
+
+			if resp.endswith("\r\nOK\r\n"):
+				print resp,
+				break
+
+def main2():
+	httpd = BaseHTTPServer.HTTPServer(('', 8000), HTTPRequestHandler)
+	httpd.serve_forever()
+
+def main():
+	bindsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	bindsocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_MAXSEG, 536)
+	bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+	bindsocket.bind(('', 9501))
+	bindsocket.listen(5)
+
+	while True:
+		newsocket, fromaddr = bindsocket.accept()
+		connstream = ssl.wrap_socket(newsocket, 
+				server_side=True, 
+				cert_reqs=ssl.CERT_NONE,
+				certfile="cert",
+				keyfile="key",
+				ssl_version=ssl.PROTOCOL_TLSv1)
+		try:
+			alht = alh.ALHTerminal(connstream)
+
+			f = HTTPRequestHandlerFactory(HTTPRequestHandler, alht)
+			httpd = BaseHTTPServer.HTTPServer(('', 8000), f)
+			httpd.serve_forever()
+
+			#deal_with_client(connstream)
+		finally:
+			connstream.shutdown(socket.SHUT_RDWR)
+			connstream.close()
+
+main()
