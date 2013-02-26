@@ -137,7 +137,7 @@ set tmargin  -1
 set locale "en_US.utf8"
 set pm3d explicit at b
 set pm3d scansautomatic
-set pm3d interpolate 1,1 flush begin noftriangles nohidden3d corners2color mean
+set pm3d interpolate 1,1 flush begin noftriangles nohidden3d corners2color c1
 set palette positive nops_allcF maxcolors 0 gamma 1.5 color model RGB 
 set palette rgbformulae 7, 5, 15
 set colorbox default
