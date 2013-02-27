@@ -30,10 +30,16 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		resource = query['resource'][0]
 
 		if method == 'get':
-			resp = self.alh.get(resource)
+			try:
+				resp = self.alh.get(resource)
+			except alh.ALHException, e:
+				resp = str(e)
 		elif method == 'post':
 			data = query['content'][0]
-			resp = self.alh.post(resource, data)
+			try:
+				resp = self.alh.post(resource, data)
+			except alh.ALHException, e:
+				resp = str(e)
 		else:
 			self._error(400, "Invalid method: %s" % (method,))
 			return
@@ -103,6 +109,7 @@ def main():
 				ssl_version=ssl.PROTOCOL_TLSv1)
 		try:
 			alht = alh.ALHTerminal(connstream)
+			alht.RETRIES = 1
 
 			f = HTTPRequestHandlerFactory(HTTPRequestHandler, alht)
 			httpd = BaseHTTPServer.HTTPServer(('', 8000), f)
