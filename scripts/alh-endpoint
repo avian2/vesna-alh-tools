@@ -11,8 +11,9 @@ from vesna import alh
 log = logging.getLogger(__name__)
 
 class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-	def __init__(self, alh, *args, **kwargs):
-		self.alh = alh
+	def __init__(self, factory, *args, **kwargs):
+		self.alh = factory.alh
+		self.factory = factory
 		BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
 	def _error(self, status, message):
@@ -20,6 +21,14 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.send_header("Content-type", "text/plain")
 		self.end_headers()
 		self.wfile.write(message)
+
+	def _split_resource_args(self, query):
+
+		f = query['resource'][0].split('?', 1)
+		if len(f) == 1:
+			return f[0], []
+		else:
+			return f[0], f[1]
 
 	def do_GET_unsafe(self):
 		parsed = urlparse.urlparse(self.path)
@@ -31,17 +40,17 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		query = urlparse.parse_qs(parsed.query)
 
 		method = query['method'][0].lower()
-		resource = query['resource'][0]
+		resource, args = self._split_resource_args(query)
 
 		if method == 'get':
 			try:
-				resp = self.alh.get(resource)
+				resp = self.alh.get(resource, args)
 			except alh.ALHException, e:
 				resp = str(e)
 		elif method == 'post':
 			data = query['content'][0]
 			try:
-				resp = self.alh.post(resource, data)
+				resp = self.alh.post(resource, data, args)
 			except alh.ALHException, e:
 				resp = str(e)
 		else:
@@ -56,17 +65,20 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_GET(self):
 		try:
 			self.do_GET_unsafe()
+		except alh.TerminalError:
+			self.factory.keep_running = False
+			self._error(500, "ERROR: coordinator closed connection")
 		except Exception:
 			self._error(500, traceback.format_exc())
 
 class HTTPRequestHandlerFactory:
 	def __init__(self, handler_class, alh):
 		self.alh = alh
+		self.keep_running = True
 		self.handler_class = handler_class
 
 	def __call__(self, *args, **kwargs):
-		o = self.handler_class(self.alh, *args, **kwargs)
-		return o
+		return self.handler_class(self, *args, **kwargs)
 
 def main():
 	parser = OptionParser(usage="%prog [options]")
@@ -111,9 +123,12 @@ def main():
 
 			f = HTTPRequestHandlerFactory(HTTPRequestHandler, alht)
 			httpd = BaseHTTPServer.HTTPServer(('', options.httpport), f)
-			httpd.serve_forever()
+
+			while f.keep_running:
+				httpd.handle_request()
+
+			del httpd
 		finally:
-			connstream.shutdown(socket.SHUT_RDWR)
 			connstream.close()
 
 main()
