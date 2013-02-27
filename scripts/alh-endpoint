@@ -1,11 +1,14 @@
 #!/usr/bin/python
 import BaseHTTPServer
+import logging
 from optparse import OptionParser
 import socket
 import ssl
 import traceback
 import urlparse
 from vesna import alh
+
+log = logging.getLogger(__name__)
 
 class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def __init__(self, alh, *args, **kwargs):
@@ -107,6 +110,8 @@ def main():
 
 	(options, args) = parser.parse_args()
 
+	logging.basicConfig(level=logging.INFO)
+
 	bindsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	bindsocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	#bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_MAXSEG, 536)
@@ -114,8 +119,13 @@ def main():
 	bindsocket.bind(('', options.sslport))
 	bindsocket.listen(5)
 
+	logging.info("Listening on port %d" % (options.sslport,))
+
 	while True:
 		newsocket, fromaddr = bindsocket.accept()
+
+		logging.info("Received connection from %s" % (fromaddr,))
+
 		connstream = ssl.wrap_socket(newsocket, 
 				server_side=True, 
 				cert_reqs=ssl.CERT_NONE,
