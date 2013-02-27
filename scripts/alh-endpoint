@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import BaseHTTPServer
+from optparse import OptionParser
 import socket
 import ssl
 import traceback
@@ -92,11 +93,25 @@ def main2():
 	httpd.serve_forever()
 
 def main():
+	parser = OptionParser(usage="%prog [options]")
+
+	parser.add_option("--key", dest="keyfile", metavar="PATH", default="key.pem",
+			help="Path to the private key")
+	parser.add_option("--cert", dest="certfile", metavar="PATH", default="cert.pem",
+			help="Path to the certificate")
+
+	parser.add_option("-o", "--http-port", dest="httpport", metavar="PORT", type="int", default=8000,
+			help="Port to listen on for HTTP traffic")
+	parser.add_option("-i", "--tunnel-port", dest="sslport", metavar="PORT", type="int", default=9501,
+			help="Port to listen on for SSH tunel from coordinator")
+
+	(options, args) = parser.parse_args()
+
 	bindsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	bindsocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_MAXSEG, 536)
+	#bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_MAXSEG, 536)
 	bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
-	bindsocket.bind(('', 9501))
+	bindsocket.bind(('', options.sslport))
 	bindsocket.listen(5)
 
 	while True:
@@ -104,15 +119,15 @@ def main():
 		connstream = ssl.wrap_socket(newsocket, 
 				server_side=True, 
 				cert_reqs=ssl.CERT_NONE,
-				certfile="cert",
-				keyfile="key",
+				certfile=options.certfile,
+				keyfile=options.keyfile,
 				ssl_version=ssl.PROTOCOL_TLSv1)
 		try:
 			alht = alh.ALHTerminal(connstream)
 			alht.RETRIES = 1
 
 			f = HTTPRequestHandlerFactory(HTTPRequestHandler, alht)
-			httpd = BaseHTTPServer.HTTPServer(('', 8000), f)
+			httpd = BaseHTTPServer.HTTPServer(('', options.httpport), f)
 			httpd.serve_forever()
 
 			#deal_with_client(connstream)
