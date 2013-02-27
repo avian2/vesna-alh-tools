@@ -68,33 +68,6 @@ class HTTPRequestHandlerFactory:
 		o = self.handler_class(self.alh, *args, **kwargs)
 		return o
 
-def deal_with_client(connstream):
-	print "call"
-	while True:
-		print "loop"
-		connstream.write("GET hello?" + "x"*520 + "\r\n")
-		#c = 520
-		#for n in xrange(520/c):
-		#	connstream.sendall("x"*c)
-		#	#print "write"
-		#connstream.sendall("\r\n")
-
-		resp = ""
-		while True:
-			data = connstream.read()
-			if not data:
-				return
-
-			resp += data
-
-			if resp.endswith("\r\nOK\r\n"):
-				print resp,
-				break
-
-def main2():
-	httpd = BaseHTTPServer.HTTPServer(('', 8000), HTTPRequestHandler)
-	httpd.serve_forever()
-
 def main():
 	parser = OptionParser(usage="%prog [options]")
 
@@ -139,8 +112,6 @@ def main():
 			f = HTTPRequestHandlerFactory(HTTPRequestHandler, alht)
 			httpd = BaseHTTPServer.HTTPServer(('', options.httpport), f)
 			httpd.serve_forever()
-
-			#deal_with_client(connstream)
 		finally:
 			connstream.shutdown(socket.SHUT_RDWR)
 			connstream.close()
