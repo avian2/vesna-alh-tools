@@ -60,6 +60,10 @@ After installation, the following tools are available:
 
   alh-tx-test   -- Signal generator test.
 
+  alh-endpoint-server
+                -- Simple ALH-to-HTTP endpoint server, useful for testing.
+
+
 Run each with "--help" as the only argument to get a list of available
 options.
 
