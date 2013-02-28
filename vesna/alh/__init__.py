@@ -32,6 +32,8 @@ class ALHRandomError(ALHException): pass
 
 class CRCError(ALHException): pass
 
+class TerminalError(IOError): pass
+
 class ALHURLOpener(urllib.FancyURLopener):
 	version = "vesna-alh-tools/1.0"
 
@@ -153,7 +155,11 @@ class ALHTerminal(ALHProtocol):
 
 		resp = ""
 		while not resp.endswith(self.RESPONSE_TERMINATOR):
-			resp += self.f.read()
+			d = self.f.read()
+			if d:
+				resp += d
+			else:
+				raise TerminalError
 
 		return resp[:-len(self.RESPONSE_TERMINATOR)]
 
