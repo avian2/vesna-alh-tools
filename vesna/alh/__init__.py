@@ -227,8 +227,13 @@ class ALHWeb(ALHProtocol):
 		self.cluster_id = cluster_id
 
 	def _send(self, url):
-		resp = urllib.urlopen(url).read()
-		#resp = resp.replace("<br>", "\n")
+		f = urllib.urlopen(url)
+		resp = f.read()
+
+		# Raise an exception if we got anything else than a 200 OK
+		if f.getcode() != 200:
+			raise TerminalError(resp)
+
 		return resp
 
 	def _send_with_error(self, url):
