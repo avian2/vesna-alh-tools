@@ -39,6 +39,11 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 		query = urlparse.parse_qs(parsed.query)
 
+		cluster_id = int(query['cluster'][0])
+		if cluster_id != self.factory.cluster_id:
+			self._error(400, "Invalid cluster ID: %d" % (cluster_id,))
+			return
+
 		method = query['method'][0].lower()
 		resource, args = self._split_resource_args(query)
 
@@ -65,15 +70,16 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_GET(self):
 		try:
 			self.do_GET_unsafe()
-		except alh.TerminalError:
+		except (alh.TerminalError, socket.error):
 			self.factory.keep_running = False
 			self._error(500, "ERROR: coordinator closed connection")
 		except Exception:
 			self._error(500, traceback.format_exc())
 
 class HTTPRequestHandlerFactory:
-	def __init__(self, handler_class, alh):
+	def __init__(self, handler_class, cluster_id, alh):
 		self.alh = alh
+		self.cluster_id = cluster_id
 		self.keep_running = True
 		self.handler_class = handler_class
 
@@ -91,7 +97,9 @@ def main():
 	parser.add_option("-o", "--http-port", dest="httpport", metavar="PORT", type="int", default=8000,
 			help="Port to listen on for HTTP traffic")
 	parser.add_option("-i", "--tunnel-port", dest="sslport", metavar="PORT", type="int", default=9501,
-			help="Port to listen on for SSH tunel from coordinator")
+			help="Port to listen on for SSL tunnel from coordinator")
+	parser.add_option("-u", "--cluster", dest="cluster_id", metavar="ID", type="int",
+			help="Cluster ID to use for the HTTP API (default is to use SSL port number)")
 
 	(options, args) = parser.parse_args()
 
@@ -103,6 +111,11 @@ def main():
 	bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
 	bindsocket.bind(('', options.sslport))
 	bindsocket.listen(5)
+
+	if options.cluster_id:
+		cluster_id = options.cluster_id
+	else:
+		cluster_id = options.sslport
 
 	logging.info("Listening on port %d" % (options.sslport,))
 
@@ -121,7 +134,7 @@ def main():
 			alht = alh.ALHTerminal(connstream)
 			alht.RETRIES = 1
 
-			f = HTTPRequestHandlerFactory(HTTPRequestHandler, alht)
+			f = HTTPRequestHandlerFactory(HTTPRequestHandler, cluster_id, alht)
 			httpd = BaseHTTPServer.HTTPServer(('', options.httpport), f)
 
 			while f.keep_running:
