@@ -65,7 +65,7 @@ class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_GET(self):
 		try:
 			self.do_GET_unsafe()
-		except alh.TerminalError:
+		except (alh.TerminalError, socket.error):
 			self.factory.keep_running = False
 			self._error(500, "ERROR: coordinator closed connection")
 		except Exception:
