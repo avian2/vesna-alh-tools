@@ -2,11 +2,14 @@
 from vesna.alh import common, ALHProxy
 import datetime
 import glob
+import logging
 from optparse import OptionParser
 import os
 import re
 import sys
 import time
+
+log = logging.getLogger(__name__)
 
 class NodeResource: 
 
@@ -28,8 +31,13 @@ class NodeResource:
 			return None
 
 		if not self.value_cached:
-			self.value = self.fetch()
-			self.value_cached = True
+			try:
+				self.value = self.fetch()
+			except Exception:
+				log.exception("fetching resource value failed")
+				self.value = None
+			else:
+				self.value_cached = True
 
 		return self.value
 
@@ -256,16 +264,19 @@ def traverse_network(options):
 	while queue:
 		addr = queue.pop()
 		if addr not in network:
-			if addr == 0:
-				alh = coordinator
-			else:
-				alh = ALHProxy(coordinator, addr)
+			try:
+				if addr == 0:
+					alh = coordinator
+				else:
+					alh = ALHProxy(coordinator, addr)
 
-			node = MonitoredNode(alh)
-			network[addr] = node
+				node = MonitoredNode(alh)
+				network[addr] = node
 
-			for next_addr in node.get_neighbor_addrs():
-				queue.insert(0, next_addr)
+				for next_addr in node.get_neighbor_addrs():
+					queue.insert(0, next_addr)
+			except Exception:
+				log.exception("fetching neighbors for node %d failed" % (addr,))
 	
 	return network
 
@@ -285,7 +296,7 @@ def do_munin(options, visited):
 
 			for current_id, nodeinfo in visited.iteritems():
 				resource = nodeinfo.resources[label]
-				if resource.value is not None:
+				if resource.get() is not None:
 					path = "%s/node_%d_%s" % (options.output, current_id, label)
 					refreshed.add(path)
 
@@ -328,8 +339,15 @@ def main():
 			help="Output a directory for the Munin plug-in")
 	parser.add_option("-M", "--munin-interval", dest="munin_interval", type="float",
 			help="Munin polling interval")
+	parser.add_option("--log-path", dest="log_path", metavar="PATH",
+			help="PATH to write log")
 
 	(options, args) = parser.parse_args()
+
+	if options.log_path:
+		logging.basicConfig(filename=options.log_path, level=logging.INFO)
+
+	log.info("alh-map started at %s" % (datetime.datetime.now(),))
 
 	visited = traverse_network(options)
 
@@ -359,5 +377,7 @@ def main():
 			visited = traverse_network(options)
 	else:
 		do_stats(options, visited)
+
+	log.info("alh-map ended at %s" % (datetime.datetime.now(),))
 
 main()
