@@ -9,11 +9,32 @@ import sys
 import time
 
 class NodeResource: 
-	def __init__(self):
+
+	MIN_VERSION = None
+
+	APPLICATION = None
+
+	def __init__(self, node):
+		self.node = node
+
 		self.value = None
+		self.value_cached = False
+
+	def get(self):
+		if not self.node.is_at_least(self.MIN_VERSION):
+			return None
+
+		if (self.APPLICATION is not None) and (self.node.application not in self.APPLICATION):
+			return None
+
+		if not self.value_cached:
+			self.value = self.fetch()
+			self.value_cached = True
+
+		return self.value
 
 	def munin_write(self, outf):
-		outf.write("%s.value %f\n" % (self.LABEL, self.value))
+		outf.write("%s.value %f\n" % (self.LABEL, self.get()))
 
 class NodeFritzBoxUptime(NodeResource):
 	MUNIN_CONFIG = """graph_title FritzBox uptime
@@ -27,9 +48,9 @@ fbuptime.min = 0
 
 	LABEL = "fbuptime"
 
-	def fetch(self, node):
-		uptime = float(node.get("fritzbox/uptime").strip())
-		self.value = uptime / 3600.0
+	def fetch(self):
+		uptime = float(self.node.alh.get("fritzbox/uptime").strip())
+		return uptime / 3600.0
 
 class NodeUptime(NodeResource):
 	MUNIN_CONFIG = """graph_title Uptime
@@ -43,15 +64,15 @@ uptime.min = 0
 
 	LABEL = "uptime"
 
-	def fetch(self, node):
-		uptime = float(node.get("uptime").strip())
+	def fetch(self):
+		uptime = float(self.node.alh.get("uptime").strip())
 
 		# old version don't count uptime from 0
 		old_uptime_offset = 1325376000.0
 		if uptime >= old_uptime_offset:
 			uptime -= old_uptime_offset
 
-		self.value = uptime / 86400.0
+		return uptime / 86400.0
 
 class NodeMCUTemperature(NodeResource):
 	MUNIN_CONFIG = """graph_title MCU temperature
@@ -64,17 +85,17 @@ mcutemp.label = mcutemp
 
 	LABEL = "mcutemp"
 
-	def fetch(self, node):
-		s = node.get("sensor/mcuTemp").strip()
+	def fetch(self):
+		s = self.node.alh.get("sensor/mcuTemp").strip()
 		g = re.search("MCU temperature is ([0-9.]+) C", s)
-		self.value = float(g.group(1))
+		return float(g.group(1))
 
 class NodeFirmwareVersion(NodeResource):
 	LABEL = "version"
 
-	def fetch(self, node):
-		hello = node.get("hello").strip()
-		self.value = hello.replace("Hello Application version ", "")
+	def fetch(self):
+		hello = self.node.alh.get("hello").strip()
+		return hello.replace("Hello Application version ", "")
 
 class NodePingTime(NodeResource):
 	MUNIN_CONFIG = """graph_title Ping time
@@ -86,10 +107,10 @@ ping.label = ping
 
 	LABEL = "ping"
 
-	def fetch(self, node):
+	def fetch(self):
 		start = time.time()
-		node.get("hello")
-		self.value = time.time() - start
+		self.node.alh.get("hello")
+		return time.time() - start
 
 class NodeRadioStatistics(NodeResource):
 	MUNIN_CONFIG = """multigraph bytes
@@ -130,12 +151,12 @@ timeouts.min 0
 
 	LABEL = "radio"
 
-	def fetch(self, node):
-		stats = node.get("radio/statistics").strip()
+	def fetch(self):
+		stats = self.node.alh.get("radio/statistics").strip()
 		# [ tx, rx, overflows, timeouts ]
 		stats = map(int, filter(lambda x:x.isdigit(), stats.split()))
 		if len(stats) >= 4:
-			self.value = stats
+			return stats
 
 	def munin_write(self, outf):
 		outf.write("""multigraph bytes
@@ -145,7 +166,7 @@ multigraph overflow
 overflow.value %d
 multigraph timeouts
 timeouts.value %d
-""" % (self.value[1], self.value[0], self.value[2], self.value[3]))
+""" % (self.get()[1], self.get()[0], self.get()[2], self.get()[3]))
 
 class MonitoredNode:
 	RESOURCES = [
@@ -163,7 +184,7 @@ class MonitoredNode:
 
 		self.neighbor_addrs = []
 
-		self.resources = dict(	(resource.LABEL, resource())
+		self.resources = dict(	(resource.LABEL, resource(self))
 					for resource in self.RESOURCES )
 
 	def _ping(self):
@@ -183,7 +204,7 @@ class MonitoredNode:
 
 		# Older versions have a buggy implementation that has a
 		# possiblity of bricking a node if this request is made.
-		if not self.is_newer_than("2.17"):
+		if not self.is_at_least("2.17"):
 			return
 
 		resp = self.alh.get("radio/neighbors")
@@ -202,26 +223,29 @@ class MonitoredNode:
 
 		return self.neighbor_addrs
 
-	def is_newer_than(self, min_version):
+	def is_at_least(self, min_version):
+		"""Return True if this node has at least version min_version or newer.
+
+		Examples:
+
+		"1.0" is newer than None (version can't be retrieved from node)
+
+		"2.0" is newer than "1.0"
+
+		"2.1" is newer than "2.0"
+
+		"2.1.1" is newer than "2.1"
+
+		"2.1.2" is newer than "2.1.1"
+		"""
 
 		def str_to_f(version):
-			return map(int, version.split("."))
+			if version is None:
+				return None
+			else:
+				return map(int, version.split("."))
 
 		return str_to_f(self.version) >= str_to_f(min_version)
-
-	def fetch(self):
-		try:
-			self.alh.post("prog/firstcall", "1")
-		except Exception, e:
-			sys.excepthook(*sys.exc_info())
-			return
-
-		for resource in self.resources.itervalues():
-			try:
-				resource.fetch(self.alh)
-			except Exception, e:
-				sys.excepthook(*sys.exc_info())
-				pass
 
 def traverse_network(options):
 	coordinator = common.get_coordinator(options)
@@ -239,8 +263,6 @@ def traverse_network(options):
 				alh = ALHProxy(coordinator, addr)
 
 			node = MonitoredNode(alh)
-			node.fetch()
-
 			network[addr] = node
 
 			for next_addr in node.get_neighbor_addrs():
@@ -281,13 +303,13 @@ def do_stats(options, visited):
 
 	print "ID\tVersion\tUptime"
 	for id, nodeinfo in visited:
-		uptime = nodeinfo.resources['uptime'].value
-		if uptime is not None:
-			uptime = datetime.timedelta(days=nodeinfo.resources['uptime'].value)
+		uptime_days = nodeinfo.resources['uptime'].get()
+		if uptime_days is not None:
+			uptime = datetime.timedelta(days=uptime_days)
 
 		row = [	
 			id,
-			nodeinfo.resources['version'].value,
+			nodeinfo.resources['version'].get(),
 			uptime,
 		]
 
