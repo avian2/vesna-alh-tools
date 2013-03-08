@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from vesna.alh import common, ALHProxy
+from vesna.alh import common, ALHProxy, ALHException
 import datetime
 import glob
 import logging
@@ -195,9 +195,15 @@ class MonitoredNode:
 					for resource in self.RESOURCES )
 
 	def _ping(self):
-		start_time = time.time()
-		resp = self.alh.get("hello")
-		self.ping_time = time.time() - start_time
+		try:
+			start_time = time.time()
+			resp = self.alh.get("hello")
+			self.ping_time = time.time() - start_time
+		except ALHException:
+			log.exception("pinging node failed")
+			self.application = None
+			self.version = None
+			return
 
 		g = re.match("(.*) version ([0-9.]+)", resp)
 		if g is None:
@@ -320,6 +326,8 @@ def do_stats(options, visited):
 		uptime_days = nodeinfo.resources['uptime'].get()
 		if uptime_days is not None:
 			uptime = datetime.timedelta(days=uptime_days)
+		else:
+			uptime = None
 
 		row = [	
 			id,
