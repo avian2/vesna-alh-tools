@@ -94,8 +94,7 @@ class NodeFirmwareVersion(NodeResource):
 	LABEL = "version"
 
 	def fetch(self):
-		hello = self.node.alh.get("hello").strip()
-		return hello.replace("Hello Application version ", "")
+		return self.node.version
 
 class NodePingTime(NodeResource):
 	MUNIN_CONFIG = """graph_title Ping time
@@ -108,9 +107,7 @@ ping.label = ping
 	LABEL = "ping"
 
 	def fetch(self):
-		start = time.time()
-		self.node.alh.get("hello")
-		return time.time() - start
+		return self.node.ping_time
 
 class NodeRadioStatistics(NodeResource):
 	MUNIN_CONFIG = """multigraph bytes
