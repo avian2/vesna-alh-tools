@@ -148,7 +148,7 @@ multigraph timeouts
 timeouts.value %d
 """ % (self.value[1], self.value[0], self.value[2], self.value[3]))
 
-class NodeInfo: 
+class MonitoredNode:
 	RESOURCES = [
 		NodeFirmwareVersion,
 		NodePingTime,
@@ -157,22 +157,22 @@ class NodeInfo:
 		NodeRadioStatistics,
 		NodeFritzBoxUptime ]
 
-	def __init__(self, node):
-		self.node = node
+	def __init__(self, alh):
+		self.alh = alh
 
 		self.resources = dict(	(resource.LABEL, resource())
 					for resource in self.RESOURCES )
 
 	def fetch(self):
 		try:
-			self.node.post("prog/firstcall", "1")
+			self.alh.post("prog/firstcall", "1")
 		except Exception, e:
 			sys.excepthook(*sys.exc_info())
 			return
 
 		for resource in self.resources.itervalues():
 			try:
-				resource.fetch(self.node)
+				resource.fetch(self.alh)
 			except Exception, e:
 				sys.excepthook(*sys.exc_info())
 				pass
@@ -197,7 +197,7 @@ def get_neigbors(node):
 	return neighbors
 
 def query_node(node):
-	nodeinfo = NodeInfo(node)
+	nodeinfo = MonitoredNode(node)
 	nodeinfo.fetch()
 	nodeinfo.neighbors = get_neigbors(node)
 	return nodeinfo
@@ -228,7 +228,7 @@ def traverse_network(options):
 def do_munin(options, visited):
 	refreshed = set()
 
-	for resource in NodeInfo.RESOURCES:
+	for resource in MonitoredNode.RESOURCES:
 		if hasattr(resource, "MUNIN_CONFIG"):
 			label = resource.LABEL
 
