@@ -1,6 +1,5 @@
 #!/usr/bin/python
-from vesna import alh
-from vesna.alh import common
+from vesna.alh import common, ALHProxy
 import datetime
 import glob
 from optparse import OptionParser
@@ -160,8 +159,55 @@ class MonitoredNode:
 	def __init__(self, alh):
 		self.alh = alh
 
+		self._ping()
+
+		self.neighbor_addrs = []
+
 		self.resources = dict(	(resource.LABEL, resource())
 					for resource in self.RESOURCES )
+
+	def _ping(self):
+		start_time = time.time()
+		resp = self.alh.get("hello")
+		self.ping_time = time.time() - start_time
+
+		g = re.match("(.*) version ([0-9.]+)", resp)
+		if g is None:
+			self.application = None
+			self.version = None
+		else:
+			self.application = g.group(1)
+			self.version = g.group(2)
+
+	def _get_neighbor_addrs(self):
+
+		# Older versions have a buggy implementation that has a
+		# possiblity of bricking a node if this request is made.
+		if not self.is_newer_than("2.17"):
+			return
+
+		resp = self.alh.get("radio/neighbors")
+
+		for line in resp.split("\r\n"):
+			fields = line.split(" | ")
+			if len(fields) == 6:
+				try:
+					self.neighbor_addrs.append(int(fields[3]))
+				except ValueError:
+					pass
+
+	def get_neighbor_addrs(self):
+		if not self.neighbor_addrs:
+			self._get_neighbor_addrs()
+
+		return self.neighbor_addrs
+
+	def is_newer_than(self, min_version):
+
+		def str_to_f(version):
+			return map(int, version.split("."))
+
+		return str_to_f(self.version) >= str_to_f(min_version)
 
 	def fetch(self):
 		try:
@@ -177,53 +223,30 @@ class MonitoredNode:
 				sys.excepthook(*sys.exc_info())
 				pass
 
-def get_neigbors(node):
-	neighbors = []
-
-	try:
-		r = node.get("radio/neighbors")
-	except Exception, e:
-		sys.excepthook(*sys.exc_info())
-		return neighbors
-
-	for line in r.split("\r\n"):
-		fields = line.split(" | ")
-		if len(fields) == 6:
-			try:
-				neighbors.append(int(fields[3]))
-			except ValueError:
-				pass
-
-	return neighbors
-
-def query_node(node):
-	nodeinfo = MonitoredNode(node)
-	nodeinfo.fetch()
-	nodeinfo.neighbors = get_neigbors(node)
-	return nodeinfo
-
 def traverse_network(options):
 	coordinator = common.get_coordinator(options)
 	coordinator.RETRIES = 1
 
 	queue = [0]
-	visited = {}
+	network = {}
 
 	while queue:
-		current_id = queue.pop()
-		if current_id not in visited:
-			if current_id == 0:
-				node = coordinator
+		addr = queue.pop()
+		if addr not in network:
+			if addr == 0:
+				alh = coordinator
 			else:
-				node = alh.ALHProxy(coordinator, current_id)
+				alh = ALHProxy(coordinator, addr)
 
-			nodeinfo = query_node(node)
-			visited[current_id] = nodeinfo
+			node = MonitoredNode(alh)
+			node.fetch()
 
-			for next_id in nodeinfo.neighbors:
-				queue.insert(0, next_id)
+			network[addr] = node
+
+			for next_addr in node.get_neighbor_addrs():
+				queue.insert(0, next_addr)
 	
-	return visited
+	return network
 
 def do_munin(options, visited):
 	refreshed = set()
