@@ -120,6 +120,8 @@ ping.label = ping
 		return self.node.ping_time
 
 class NodeRadioStatistics(NodeResource):
+	MIN_VERSION = "2.4"
+
 	MUNIN_CONFIG = """multigraph bytes
 graph_order rx tx
 graph_title ZigBit traffic
