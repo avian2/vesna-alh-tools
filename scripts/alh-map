@@ -45,7 +45,7 @@ class NodeResource:
 		outf.write("%s.value %f\n" % (self.LABEL, self.get()))
 
 class NodeFritzBoxUptime(NodeResource):
-	MIN_VERSION = "2.28"
+	MIN_VERSION = "2.27"
 
 	MUNIN_CONFIG = """graph_title FritzBox uptime
 graph_args --base 1000 -l 0
