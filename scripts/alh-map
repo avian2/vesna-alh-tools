@@ -207,7 +207,7 @@ class MonitoredNode:
 			self.version = None
 			return
 
-		g = re.match("(.*) version ([0-9.]+)", resp)
+		g = re.match("(.+) version ([0-9.]+)", resp)
 		if g is None:
 			self.application = None
 			self.version = None
@@ -323,7 +323,7 @@ def do_munin(options, visited):
 def do_stats(options, visited):
 	visited = sorted((id, info) for id, info in visited.iteritems())
 
-	print "ID\tVersion\tUptime"
+	print "ID\tApplication         \tVersion\tUptime"
 	for id, nodeinfo in visited:
 		uptime_days = nodeinfo.resources['uptime'].get()
 		if uptime_days is not None:
@@ -333,7 +333,8 @@ def do_stats(options, visited):
 
 		row = [	
 			id,
-			nodeinfo.resources['version'].get(),
+			nodeinfo.application.ljust(20),
+			nodeinfo.version,
 			uptime,
 		]
 
