@@ -1,22 +1,52 @@
 #!/usr/bin/python
-from vesna import alh
-from vesna.alh import common
+from vesna.alh import common, ALHProxy, ALHException
 import datetime
 import glob
+import logging
 from optparse import OptionParser
 import os
 import re
 import sys
 import time
 
+log = logging.getLogger(__name__)
+
 class NodeResource: 
-	def __init__(self):
+
+	MIN_VERSION = None
+
+	APPLICATION = None
+
+	def __init__(self, node):
+		self.node = node
+
 		self.value = None
+		self.value_cached = False
+
+	def get(self):
+		if not self.node.is_at_least(self.MIN_VERSION):
+			return None
+
+		if (self.APPLICATION is not None) and (self.node.application not in self.APPLICATION):
+			return None
+
+		if not self.value_cached:
+			try:
+				self.value = self.fetch()
+			except Exception:
+				log.exception("fetching resource value failed")
+				self.value = None
+			else:
+				self.value_cached = True
+
+		return self.value
 
 	def munin_write(self, outf):
-		outf.write("%s.value %f\n" % (self.LABEL, self.value))
+		outf.write("%s.value %f\n" % (self.LABEL, self.get()))
 
 class NodeFritzBoxUptime(NodeResource):
+	APPLICATION = ("Coordinator+FritzBox",)
+
 	MUNIN_CONFIG = """graph_title FritzBox uptime
 graph_args --base 1000 -l 0
 graph_scale no
@@ -28,9 +58,9 @@ fbuptime.min = 0
 
 	LABEL = "fbuptime"
 
-	def fetch(self, node):
-		uptime = float(node.get("fritzbox/uptime").strip())
-		self.value = uptime / 3600.0
+	def fetch(self):
+		uptime = float(self.node.alh.get("fritzbox/uptime").strip())
+		return uptime / 3600.0
 
 class NodeUptime(NodeResource):
 	MUNIN_CONFIG = """graph_title Uptime
@@ -44,15 +74,15 @@ uptime.min = 0
 
 	LABEL = "uptime"
 
-	def fetch(self, node):
-		uptime = float(node.get("uptime").strip())
+	def fetch(self):
+		uptime = float(self.node.alh.get("uptime").strip())
 
 		# old version don't count uptime from 0
 		old_uptime_offset = 1325376000.0
 		if uptime >= old_uptime_offset:
 			uptime -= old_uptime_offset
 
-		self.value = uptime / 86400.0
+		return uptime / 86400.0
 
 class NodeMCUTemperature(NodeResource):
 	MUNIN_CONFIG = """graph_title MCU temperature
@@ -65,17 +95,16 @@ mcutemp.label = mcutemp
 
 	LABEL = "mcutemp"
 
-	def fetch(self, node):
-		s = node.get("sensor/mcuTemp").strip()
+	def fetch(self):
+		s = self.node.alh.get("sensor/mcuTemp").strip()
 		g = re.search("MCU temperature is ([0-9.]+) C", s)
-		self.value = float(g.group(1))
+		return float(g.group(1))
 
 class NodeFirmwareVersion(NodeResource):
 	LABEL = "version"
 
-	def fetch(self, node):
-		hello = node.get("hello").strip()
-		self.value = hello.replace("Hello Application version ", "")
+	def fetch(self):
+		return self.node.version
 
 class NodePingTime(NodeResource):
 	MUNIN_CONFIG = """graph_title Ping time
@@ -87,12 +116,12 @@ ping.label = ping
 
 	LABEL = "ping"
 
-	def fetch(self, node):
-		start = time.time()
-		node.get("hello")
-		self.value = time.time() - start
+	def fetch(self):
+		return self.node.ping_time
 
 class NodeRadioStatistics(NodeResource):
+	MIN_VERSION = "2.4"
+
 	MUNIN_CONFIG = """multigraph bytes
 graph_order rx tx
 graph_title ZigBit traffic
@@ -131,12 +160,12 @@ timeouts.min 0
 
 	LABEL = "radio"
 
-	def fetch(self, node):
-		stats = node.get("radio/statistics").strip()
+	def fetch(self):
+		stats = self.node.alh.get("radio/statistics").strip()
 		# [ tx, rx, overflows, timeouts ]
 		stats = map(int, filter(lambda x:x.isdigit(), stats.split()))
 		if len(stats) >= 4:
-			self.value = stats
+			return stats
 
 	def munin_write(self, outf):
 		outf.write("""multigraph bytes
@@ -146,9 +175,9 @@ multigraph overflow
 overflow.value %d
 multigraph timeouts
 timeouts.value %d
-""" % (self.value[1], self.value[0], self.value[2], self.value[3]))
+""" % (self.get()[1], self.get()[0], self.get()[2], self.get()[3]))
 
-class NodeInfo: 
+class MonitoredNode:
 	RESOURCES = [
 		NodeFirmwareVersion,
 		NodePingTime,
@@ -157,78 +186,116 @@ class NodeInfo:
 		NodeRadioStatistics,
 		NodeFritzBoxUptime ]
 
-	def __init__(self, node):
-		self.node = node
+	def __init__(self, alh):
+		self.alh = alh
 
-		self.resources = dict(	(resource.LABEL, resource())
+		self._ping()
+
+		self.neighbor_addrs = []
+
+		self.resources = dict(	(resource.LABEL, resource(self))
 					for resource in self.RESOURCES )
 
-	def fetch(self):
+	def _ping(self):
 		try:
-			self.node.post("prog/firstcall", "1")
-		except Exception, e:
-			sys.excepthook(*sys.exc_info())
+			start_time = time.time()
+			resp = self.alh.get("hello")
+			self.ping_time = time.time() - start_time
+		except ALHException:
+			log.exception("pinging node failed")
+			self.application = None
+			self.version = None
 			return
 
-		for resource in self.resources.itervalues():
-			try:
-				resource.fetch(self.node)
-			except Exception, e:
-				sys.excepthook(*sys.exc_info())
-				pass
+		g = re.match("(.+) version ([0-9.]+)", resp)
+		if g is None:
+			self.application = None
+			self.version = None
+		else:
+			self.application = g.group(1)
+			self.version = g.group(2)
 
-def get_neigbors(node):
-	neighbors = []
+	def _get_neighbor_addrs(self):
 
-	try:
-		r = node.get("radio/neighbors")
-	except Exception, e:
-		sys.excepthook(*sys.exc_info())
-		return neighbors
+		# Older versions have a buggy implementation that has a
+		# possiblity of bricking a node if this request is made.
+		if not self.is_at_least("2.16"):
+			return
 
-	for line in r.split("\r\n"):
-		fields = line.split(" | ")
-		if len(fields) == 6:
-			try:
-				neighbors.append(int(fields[3]))
-			except ValueError:
-				pass
+		resp = self.alh.get("radio/neighbors")
 
-	return neighbors
+		for line in resp.split("\r\n"):
+			fields = line.split(" | ")
+			if len(fields) == 6:
+				try:
+					self.neighbor_addrs.append(int(fields[3]))
+				except ValueError:
+					pass
 
-def query_node(node):
-	nodeinfo = NodeInfo(node)
-	nodeinfo.fetch()
-	nodeinfo.neighbors = get_neigbors(node)
-	return nodeinfo
+	def get_neighbor_addrs(self):
+		if not self.neighbor_addrs:
+			self._get_neighbor_addrs()
+
+		return self.neighbor_addrs
+
+	def is_at_least(self, min_version):
+		"""Return True if this node has at least version min_version or newer.
+
+		Examples:
+
+		"1.0" is newer than None (version can't be retrieved from node)
+
+		"2.0" is newer than "1.0"
+
+		"2.1" is newer than "2.0"
+
+		"2.1.1" is newer than "2.1"
+
+		"2.1.2" is newer than "2.1.1"
+		"""
+
+		if self.version is None:
+			# return False for bad nodes, even if min_version is None
+			return False
+
+		def str_to_f(version):
+			if version is None:
+				return None
+			else:
+				return map(int, version.split("."))
+
+		return str_to_f(self.version) >= str_to_f(min_version)
 
 def traverse_network(options):
 	coordinator = common.get_coordinator(options)
 	coordinator.RETRIES = 1
 
 	queue = [0]
-	visited = {}
+	network = {}
 
 	while queue:
-		current_id = queue.pop()
-		if current_id not in visited:
-			if current_id == 0:
-				node = coordinator
-			else:
-				node = alh.ALHProxy(coordinator, current_id)
+		addr = queue.pop()
+		if addr not in network:
+			try:
+				if addr == 0:
+					alh = coordinator
+				else:
+					alh = ALHProxy(coordinator, addr)
 
-			nodeinfo = query_node(node)
-			visited[current_id] = nodeinfo
+				node = MonitoredNode(alh)
+				network[addr] = node
 
-			for next_id in nodeinfo.neighbors:
-				queue.insert(0, next_id)
+				for next_addr in node.get_neighbor_addrs():
+					queue.insert(0, next_addr)
+			except Exception:
+				log.exception("fetching neighbors for node %d failed" % (addr,))
 	
-	return visited
+	return network
 
 def do_munin(options, visited):
 	refreshed = set()
 
-	for resource in NodeInfo.RESOURCES:
+	for resource in MonitoredNode.RESOURCES:
 		if hasattr(resource, "MUNIN_CONFIG"):
 			label = resource.LABEL
 
@@ -241,7 +308,7 @@ def do_munin(options, visited):
 
 			for current_id, nodeinfo in visited.iteritems():
 				resource = nodeinfo.resources[label]
-				if resource.value is not None:
+				if resource.get() is not None:
 					path = "%s/node_%d_%s" % (options.output, current_id, label)
 					refreshed.add(path)
 
@@ -256,15 +323,18 @@ def do_munin(options, visited):
 def do_stats(options, visited):
 	visited = sorted((id, info) for id, info in visited.iteritems())
 
-	print "ID\tVersion\tUptime"
+	print "ID\tApplication         \tVersion\tUptime"
 	for id, nodeinfo in visited:
-		uptime = nodeinfo.resources['uptime'].value
-		if uptime is not None:
-			uptime = datetime.timedelta(days=nodeinfo.resources['uptime'].value)
+		uptime_days = nodeinfo.resources['uptime'].get()
+		if uptime_days is not None:
+			uptime = datetime.timedelta(days=uptime_days)
+		else:
+			uptime = None
 
 		row = [	
 			id,
-			nodeinfo.resources['version'].value,
+			nodeinfo.application.ljust(20),
+			nodeinfo.version,
 			uptime,
 		]
 
@@ -276,18 +346,28 @@ def main():
 	common.add_communication_options(parser)
 
 	parser.add_option("-o", "--output", dest="output", metavar="PATH",
-			help="PATH to write dotfile to")
+			help="PATH to write dotfile or Munin data to")
 
 	parser.add_option("-t", "--dot", dest="do_dot", action="store_true",
 			help="Output a DOT file")
 	parser.add_option("-m", "--munin", dest="do_munin", action="store_true",
 			help="Output a directory for the Munin plug-in")
-	parser.add_option("-M", "--munin-interval", dest="munin_interval", type="float",
-			help="Munin polling interval")
+	parser.add_option("--log-path", dest="log_path", metavar="PATH",
+			help="PATH to write log")
 
 	(options, args) = parser.parse_args()
 
+	if options.log_path:
+		logging.basicConfig(filename=options.log_path, level=logging.INFO)
+
+	log.info("alh-map started at %s" % (datetime.datetime.now(),))
+
 	visited = traverse_network(options)
+
+	# Ugly hack until we upgrade the coordinator
+	if (options.cluster_id == 10003) and (visited[0].application == "Hello Application"):
+		log.warning("Correcting application name. Please upgrade coordinator firmware!")
+		visited[0].application = "Coordinator+FritzBox"
 
 	if options.do_dot:
 
@@ -303,17 +383,10 @@ def main():
 					outf.write("n%d -> n%d\n" % (current_id, next_id))
 		outf.write("}\n")
 	elif options.do_munin:
-		while True:
-			do_munin(options, visited)
-
-			if not options.munin_interval:
-				break
-
-			print "Updated ", datetime.datetime.now()
-
-			time.sleep(options.munin_interval)
-			visited = traverse_network(options)
+		do_munin(options, visited)
 	else:
 		do_stats(options, visited)
+
+	log.info("alh-map ended at %s" % (datetime.datetime.now(),))
 
 main()
