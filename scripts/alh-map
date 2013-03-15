@@ -333,7 +333,7 @@ def do_stats(options, visited):
 
 		row = [	
 			id,
-			nodeinfo.application.ljust(20),
+			str(nodeinfo.application).ljust(20),
 			nodeinfo.version,
 			uptime,
 		]
