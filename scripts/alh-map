@@ -82,6 +82,14 @@ uptime.min = 0
 		if uptime >= old_uptime_offset:
 			uptime -= old_uptime_offset
 
+		# if node has such a low uptime, it might have been
+		# power cycles.
+		#
+		# make a prog/firstCall so that it doesn't reset
+		# itself continuously.
+		if uptime < 3600.0:
+			self.node.alh.post("prog/firstCall", "1")
+
 		return uptime / 86400.0
 
 class NodeMCUTemperature(NodeResource):
