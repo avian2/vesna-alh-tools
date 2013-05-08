@@ -60,11 +60,28 @@ After installation, the following tools are available:
 
   alh-tx-test   -- Signal generator test.
 
+  alh-endpoint-server
+                -- Simple ALH-to-HTTP endpoint server, useful for testing.
+
+
 Run each with "--help" as the only argument to get a list of available
 options.
 
+Note: if the API end-point is using basic authentication, you will be
+prompted for credentials on the command line.
 
-Several Python modules are installed as well. Refer to docstring
+You can also save credentials into either a file named ".alhrc" in your
+home directory or "alhrc" in the current directory. Format of the file is
+as in the following example:
+
+Host example.com
+User <username>
+Password <password>
+# more Host, User, Password lines can follow
+
+
+Several Python modules are installed as well. Refer to demo programs in the
+demos/ directory for examples on how to use them and docstring
 documentation for details.
 
 

@@ -1,0 +1,147 @@
+#!/usr/bin/python
+import BaseHTTPServer
+import logging
+from optparse import OptionParser
+import socket
+import ssl
+import traceback
+import urlparse
+from vesna import alh
+
+log = logging.getLogger(__name__)
+
+class HTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+	def __init__(self, factory, *args, **kwargs):
+		self.alh = factory.alh
+		self.factory = factory
+		BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
+
+	def _error(self, status, message):
+		self.send_response(status)
+		self.send_header("Content-type", "text/plain")
+		self.end_headers()
+		self.wfile.write(message)
+
+	def _split_resource_args(self, query):
+
+		f = query['resource'][0].split('?', 1)
+		if len(f) == 1:
+			return f[0], []
+		else:
+			return f[0], f[1]
+
+	def do_GET_unsafe(self):
+		parsed = urlparse.urlparse(self.path)
+
+		if parsed.path != '/communicator':
+			self._error(404, "Path not found: %s" % (parsed.path,))
+			return
+
+		query = urlparse.parse_qs(parsed.query)
+
+		cluster_id = int(query['cluster'][0])
+		if cluster_id != self.factory.cluster_id:
+			self._error(400, "Invalid cluster ID: %d" % (cluster_id,))
+			return
+
+		method = query['method'][0].lower()
+		resource, args = self._split_resource_args(query)
+
+		if method == 'get':
+			try:
+				resp = self.alh.get(resource, args)
+			except alh.ALHException, e:
+				resp = str(e)
+		elif method == 'post':
+			data = query['content'][0]
+			try:
+				resp = self.alh.post(resource, data, args)
+			except alh.ALHException, e:
+				resp = str(e)
+		else:
+			self._error(400, "Invalid method: %s" % (method,))
+			return
+
+		self.send_response(200)
+		self.send_header("Content-type", "text/plain")
+		self.end_headers()
+		self.wfile.write(resp)
+
+	def do_GET(self):
+		try:
+			self.do_GET_unsafe()
+		except (alh.TerminalError, socket.error):
+			self.factory.keep_running = False
+			self._error(500, "ERROR: coordinator closed connection")
+		except Exception:
+			self._error(500, traceback.format_exc())
+
+class HTTPRequestHandlerFactory:
+	def __init__(self, handler_class, cluster_id, alh):
+		self.alh = alh
+		self.cluster_id = cluster_id
+		self.keep_running = True
+		self.handler_class = handler_class
+
+	def __call__(self, *args, **kwargs):
+		return self.handler_class(self, *args, **kwargs)
+
+def main():
+	parser = OptionParser(usage="%prog [options]")
+
+	parser.add_option("--key", dest="keyfile", metavar="PATH", default="key.pem",
+			help="Path to the private key")
+	parser.add_option("--cert", dest="certfile", metavar="PATH", default="cert.pem",
+			help="Path to the certificate")
+
+	parser.add_option("-o", "--http-port", dest="httpport", metavar="PORT", type="int", default=8000,
+			help="Port to listen on for HTTP traffic")
+	parser.add_option("-i", "--tunnel-port", dest="sslport", metavar="PORT", type="int", default=9501,
+			help="Port to listen on for SSL tunnel from coordinator")
+	parser.add_option("-u", "--cluster", dest="cluster_id", metavar="ID", type="int",
+			help="Cluster ID to use for the HTTP API (default is to use SSL port number)")
+
+	(options, args) = parser.parse_args()
+
+	logging.basicConfig(level=logging.INFO)
+
+	bindsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	bindsocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	#bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_MAXSEG, 536)
+	bindsocket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+	bindsocket.bind(('', options.sslport))
+	bindsocket.listen(5)
+
+	if options.cluster_id:
+		cluster_id = options.cluster_id
+	else:
+		cluster_id = options.sslport
+
+	logging.info("Listening on port %d" % (options.sslport,))
+
+	while True:
+		newsocket, fromaddr = bindsocket.accept()
+
+		logging.info("Received connection from %s" % (fromaddr,))
+
+		connstream = ssl.wrap_socket(newsocket, 
+				server_side=True, 
+				cert_reqs=ssl.CERT_NONE,
+				certfile=options.certfile,
+				keyfile=options.keyfile,
+				ssl_version=ssl.PROTOCOL_TLSv1)
+		try:
+			alht = alh.ALHTerminal(connstream)
+			alht.RETRIES = 1
+
+			f = HTTPRequestHandlerFactory(HTTPRequestHandler, cluster_id, alht)
+			httpd = BaseHTTPServer.HTTPServer(('', options.httpport), f)
+
+			while f.keep_running:
+				httpd.handle_request()
+
+			del httpd
+		finally:
+			connstream.close()
+
+main()

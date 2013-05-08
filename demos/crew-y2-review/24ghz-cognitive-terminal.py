@@ -1,24 +1,20 @@
 from vesna import alh
 from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorProgram
 from vesna.alh.signalgenerator import SignalGenerator, SignalGeneratorProgram, TxConfig
-from vesna.alh.common import log
 
+import logging
 import os
 import string
 import sys
 import time
 
-def get_communicator_url():
-	try:
-		credentials = open("credentials").read().strip() + "@"
-	except IOError:
-		credentials = ""
+logging.basicConfig(level=logging.INFO)
 
-	return "https://%scrn.log-a-tec.eu/communicator" % (credentials,)
+def get_communicator_url():
+	return "https://crn.log-a-tec.eu/communicator"
 
 def main():
 	coor_industrial_zone = alh.ALHWeb(get_communicator_url(), 10001)
-	coor_industrial_zone._log = log
 
 	time_start = time.time() + 15
 

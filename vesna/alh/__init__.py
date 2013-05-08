@@ -1,8 +1,18 @@
 import binascii
+import logging
+import os
 import re
+import string
 import sys
 import time
 import urllib
+
+SETTINGS_PATHS = [
+		'alhrc',
+		os.path.join(os.environ['HOME'], '.alhrc'),
+	]
+
+log = logging.getLogger(__name__)
 
 class ALHException(Exception): pass
 
@@ -21,6 +31,47 @@ class CorruptedData(ALHProtocolException):
 class ALHRandomError(ALHException): pass
 
 class CRCError(ALHException): pass
+
+class TerminalError(IOError): pass
+
+class ALHURLOpener(urllib.FancyURLopener):
+	version = "vesna-alh-tools/1.0"
+
+	def prompt_user_passwd(self, host, realm):
+		for path in SETTINGS_PATHS:
+			try:
+				f = open(path)
+			except IOError:
+				continue
+
+			match = False
+			user = None
+			passwd = None
+
+			for line in f:
+				if line.startswith('#'):
+					continue
+
+				try:
+					key, value = line.strip().split()
+				except ValueError:
+					continue
+
+				if (key == 'Host'):
+					match = (value == host)
+					user = None
+					passwd = None
+				elif match and (key == 'User'):
+					user = value
+				elif match and (key == 'Password'):
+					passwd = value
+
+				if match and user and passwd:
+					return (user, passwd)
+
+		return urllib.FancyURLopener.prompt_user_passwd(self, host, realm)
+
+urllib._urlopener = ALHURLOpener()
 
 class ALHProtocol:
 	"""Base class for an ALH protocol service.
@@ -54,8 +105,15 @@ class ALHProtocol:
 		"""
 		return self._post(resource, data, *args)
 
-	def _log(self, msg):
-		pass
+	def _log_request(self, method, resource, args):
+		log.info("%8s: %s?%s" % (method, resource, "".join(args)))
+
+	def _log_response(self, resp):
+		if all(c in string.printable for c in resp):
+			resp_ascii = resp.strip().decode("ascii", "ignore")
+			log.info("response: %s" % (resp_ascii,))
+		else:
+			log.info("unprintable response (%d bytes)" % (len(resp),))
 
 	def _send_with_retry(self, data):
 
@@ -66,8 +124,7 @@ class ALHProtocol:
 				if retry == self.RETRIES - 1:
 					raise e
 				else:
-					sys.excepthook(*sys.exc_info())
-					print "Retrying (%d)..." % (retry+1)
+					log.exception("retrying (%d)" % (retry+1,))
 
 	def _check_for_sneaky_error(self, resp):
 		# This is extremely ugly. But since we don't have
@@ -98,7 +155,11 @@ class ALHTerminal(ALHProtocol):
 
 		resp = ""
 		while not resp.endswith(self.RESPONSE_TERMINATOR):
-			resp += self.f.read()
+			d = self.f.read()
+			if d:
+				resp += d
+			else:
+				raise TerminalError
 
 		return resp[:-len(self.RESPONSE_TERMINATOR)]
 
@@ -117,15 +178,19 @@ class ALHTerminal(ALHProtocol):
 			raise CorruptedData(resp)
 
 		self._check_for_sneaky_error(resp)
+		self._log_response(resp)
 
-		self._log(resp)
 		return resp
 
 	def _get(self, resource, *args):
+		self._log_request("GET", resource, args)
+
 		arg = "".join(args)
 		return self._send_with_retry("get %s?%s\r\n" % (resource, arg))
 
 	def _post(self, resource, data, *args):
+		self._log_request("POST", resource, args)
+
 		arg = "".join(args)
 
 		req = "post %s?%s\r\nlength=%d\r\n%s\r\n" % (
@@ -144,8 +209,16 @@ class ALHWeb(ALHProtocol):
 		"""Create a new ALHWeb object.
 
 		Note: if the API end-point is using basic authentication, you will be
-		prompted for credentials on the command line unless you specify the
-		user name and password in the URL
+		prompted for credentials on the command line.
+
+		You can also save credentials into either a file named ".alhrc" in your home
+		directory or "alhrc" in the current directory. Format of the file is as in
+		the following example:
+
+		Host example.com
+		User <username>
+		Password <password>
+		# more Host, User, Password lines can follow
 
 		base_url -- Base URL of the HTTP API (e.g. https://crn.log-a-tec.eu/communicator)
 		cluster_id -- Numerical cluster id
@@ -154,28 +227,36 @@ class ALHWeb(ALHProtocol):
 		self.cluster_id = cluster_id
 
 	def _send(self, url):
-		resp = urllib.urlopen(url).read()
-		#resp = resp.replace("<br>", "\n")
+		f = urllib.urlopen(url)
+		resp = f.read()
+
+		# Raise an exception if we got anything else than a 200 OK
+		if f.getcode() != 200:
+			raise TerminalError(resp)
+
 		return resp
 
 	def _send_with_error(self, url):
 		# loop until communication channel is free and our request
 		# goes through.
+		time_start = time.time()
 		while True:
 			resp = self._send(url)
 			if resp != "ERROR: Communication in progress":
 				break
 
-			self._log("Communication in progress...")
+			log.info("communicator is busy (have been waiting for %d s)" %
+					(time.time() - time_start))
 
 			time.sleep(1)
 
 		self._check_for_sneaky_error(resp)
 		
-		self._log(resp)
+		self._log_response(resp)
 		return resp
 
 	def _get(self, resource, *args):
+		self._log_request("GET", resource, args)
 
 		arg = "".join(args)
 		query = (
@@ -189,6 +270,7 @@ class ALHWeb(ALHProtocol):
 		return self._send_with_retry(url)
 
 	def _post(self, resource, data, *args):
+		self._log_request("POST", resource, args)
 
 		arg = "".join(args)
 		query = (
@@ -238,7 +320,15 @@ class ALHProxy(ALHProtocol):
 
 	def _post(self, resource, data, *args):
 		try:
-			return self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
+			response = self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError, e:
 			self._check_for_junk_state(str(e))
 			raise
+
+		# For POST requests, coordinator adds some string at the start
+		# of the response.
+
+		# Clean it up here, so that responses via proxy are identical
+		# to responses with direct connection.
+		response = re.sub("^Node #%d return;" % (self.addr,), "", response)
+		return response
