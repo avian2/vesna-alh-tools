@@ -1,5 +1,4 @@
 import datetime
-from lxml import etree
 import json
 import os.path
 import time
@@ -8,19 +7,26 @@ import vesna.alh
 import vesna.alh.spectrumsensor
 import vesna.alh.common
 
-_METADATA_HEADER = "Additional VESNA metadata follows:\n\n"
+def force_list(v):
+	if v is None:
+		return []
+	elif isinstance(v, str) or isinstance(v, unicode):
+		return [ v ]
+	else:
+		v
 
-def _metadata_encode(obj, string=''):
-	i = string.find(_METADATA_HEADER)
-	if i != -1:
-		string = string[:i]
+class CDFError(Exception): pass
 
-	return string + _METADATA_HEADER + json.dumps(obj, indent=4)
-
-def _metadata_decode(string):
-	i = string.find(_METADATA_HEADER)
-	if i != -1:
-		return json.loads(string[i+len(_METADATA_HEADER):])
+class CDFInterferer:
+	def __init__(self, device, center_hz, power_dbm, start_time, end_time, 
+			device_id=None, config_id=None):
+		self.device = device
+		self.center_hz = center_hz
+		self.power_dbm = power_dbm
+		self.device_id = device_id
+		self.config_id = config_id
+		self.start_time = start_time
+		self.end_time = end_time
 
 class CDFDevice:
 	def __init__(self, base_url, cluster_id, addr):
@@ -28,24 +34,24 @@ class CDFDevice:
 		self.cluster_id = cluster_id
 		self.addr = addr
 
-	@classmethod
-	def _from_xml(cls, tree):
-		obj = _metadata_decode(tree.find("description").text)
-		return cls(obj['base_url'], obj['cluster_id'], obj['addr'])
+	def key(self):
+		return (self.base_url, self.cluster_id, self.addr)
 
-	def _to_xml(self):
-		tree = etree.Element("device")
+	def __str__(self):
+		return "<CDFDevice base_url=%s cluster_id=%d addr=%d>" % (base_url, cluster_id, addr)
 
-		name = etree.SubElement(tree, "name")
-		name.text = "VESNA node %d" % (self.addr,)
+class CDFAuthor:
+	def __init__(self, name, email, address=None, phone=None, institution=None):
+		self.name = name
+		self.email = email
+		self.address = force_list(address)
+		self.phone = force_list(phone)
+		self.institution = force_list(institution)
 
-		description = etree.SubElement(tree, "description")
-		description.text = _metadata_encode({
-			"base_url": self.base_url,
-			"cluster_id": self.cluster_id,
-			"addr": self.addr})
-
-		return tree
+class CDFDocument:
+	def __init__(self, description=None, bibtex=None):
+		self.description = force_list(description)
+		self.bibtex = force_list(bibtex)
 
 class CDFExperimentIteration:
 	def __init__(self, start_time, end_time, slot_id=10):
@@ -55,161 +61,76 @@ class CDFExperimentIteration:
 
 class CDFExperimentSensor: pass
 
+class CDFExperimentInterferer: pass
+
 class CDFExperiment:
-	def __init__(self, title, summary, start_hz, stop_hz, step_hz, tag=None, _xml_tree=None):
-		self.devices = []
+	def __init__(self, title, summary, methodology, related_experiments, notes, 
+			tag=None, release_date=None, authors=None, documentation=None, devices=None, 
+			interferers=None):
+
 		self.title = title
+
+		if tag is not None:
+			self.tag = tag
+		else:
+			self.tag = "vesna-alh-tools-" + str(uuid.uuid4())
+
+		self.authors = force_list(authors)
+
+		self.release_date = release_date
+
 		self.summary = summary
+
+		self.methodology = force_list(methodology)
+
+		self.documentation = force_list(documentation)
+
+		self.related_experiments = related_experiments
+
+		self.notes = force_list(notes)
+
+		self.start_hz = None
+		self.stop_hz = None
+		self.step_hz = None
+
+		self.duration = None
+
+		self.devices = force_list(devices)
+		self.interferers = force_list(interferers)
+
+		self.iterations = []
+
+	def set_frequency_range(self, start_hz, stop_hz, step_hz):
 		self.start_hz = start_hz
 		self.stop_hz = stop_hz
 		self.step_hz = step_hz
 
-		if tag is None:
-			tag = "vesna-alh-tools-" + str(uuid.uuid4())
+	def set_duration(self, duration):
+		self.duration = duration
 
-		self.tag = tag
+	def add_author(self, author):
+		self.authors.append(author)
 
-		self._unsaved_iterations = []
+	def add_document(self, document):
+		self.documentation.append(document)
 
-		if _xml_tree:
-			self.xml_tree = _xml_tree
-		else:
-
-			now = datetime.datetime.now()
-
-			t = """<experimentDescription>
-	<experimentAbstract>
-	</experimentAbstract>
-	<metaInformation>
-		<radioFrequency>
-			<startFrequency>%(start_hz)d</startFrequency>
-			<stopFrequency>%(stop_hz)d</stopFrequency>
-		</radioFrequency>
-		<date>%(date)s</date>
-		<traceDescription>
-			<format>Tab-separated-values file with timestamp, frequency, power triplets.</format>
-			<fileFormat>
-				<header>Comment line, starting with #</header>
-				<collectedMetrics>
-					<name>time</name>
-					<unitOfMeasurements>s</unitOfMeasurements>
-				</collectedMetrics>
-				<collectedMetrics>
-					<name>frequency</name>
-					<unitOfMeasurements>Hz</unitOfMeasurements>
-				</collectedMetrics>
-				<collectedMetrics>
-					<name>power</name>
-					<unitOfMeasurements>dBm</unitOfMeasurements>
-				</collectedMetrics>
-			</fileFormat>
-		</traceDescription>
-	</metaInformation>
-</experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz, "date": now.isoformat() }
-
-			# remove whitespace - it's added later through pretty_print
-			t = t.replace("\t", "").replace("\n", "")
-			self.xml_tree = etree.ElementTree(etree.XML(t))
-
-			abstract = self.xml_tree.find("experimentAbstract")
-
-			title_ = etree.SubElement(abstract, "title")
-			title_.text = title
-
-			tag_ = etree.SubElement(abstract, "uniqueCREWTag")
-			tag_.text = tag
-
-			date_ = etree.SubElement(abstract, "releaseDate")
-			date_.text = now.isoformat()
-
-			summary_ = etree.SubElement(abstract, "experimentSummary")
-			summary_.text = summary
-
-			etree.SubElement(abstract, "relatedExperiments")
-
-			notes_ = etree.SubElement(abstract, "notes")
-			notes_.text = _metadata_encode({"step_hz": step_hz})
-
-	def add_device(self, device, _add_to_tree=True):
+	def add_device(self, device):
 		self.devices.append(device)
 
-		if _add_to_tree:
-			self.xml_tree.find("metaInformation").append(device._to_xml())
+	def add_interferer(self, interferer):
+		self.interferers.append(interferer)
 
-	@classmethod
-	def load(cls, f):
-		xml_tree = etree.parse(f)
+	def iter_all_devices(self):
+		for device in self.devices:
+			yield device
 
-		start_hz = int(xml_tree.find("metaInformation/radioFrequency/startFrequency").text)
-		stop_hz = int(xml_tree.find("metaInformation/radioFrequency/stopFrequency").text)
-
-		title = xml_tree.find("experimentAbstract/title").text
-		summary = xml_tree.find("experimentAbstract/experimentSummary").text
-		tag = xml_tree.find("experimentAbstract/uniqueCREWTag").text
-
-		obj = _metadata_decode(xml_tree.find("experimentAbstract/notes").text)
-		step_hz = obj['step_hz']
-
-		e = cls(title, summary, start_hz, stop_hz, step_hz, tag=tag, _xml_tree=xml_tree)
-
-		for device in xml_tree.findall("metaInformation/device"):
-			e.add_device(CDFDevice._from_xml(device), _add_to_tree=False)
-
-		return e
-
-	def save(self, f):
-		self.xml_tree.write(f, pretty_print=True, encoding='utf8')
-
-	def save_all(self, path=None):
-		if path is None:
-			path = self.tag
-
-		cdf_path = path + ".cdf"
-		dat_path = path + ".dat"
-
-		try:
-			os.mkdir(dat_path)
-		except OSError:
-			pass
-
-		for iteration in self._unsaved_iterations:
-			iteration_ = etree.SubElement(self.xml_tree.getroot(), "experimentIteration")
-
-			time_ = etree.SubElement(iteration_, "time")
-
-			starttime_ = etree.SubElement(time_, "starttime")
-			starttime_.text = datetime.datetime.fromtimestamp(iteration.start_time).isoformat()
-
-			endtime_ = etree.SubElement(time_, "endtime")
-			endtime_.text = datetime.datetime.fromtimestamp(iteration.end_time).isoformat()
-
-			for i, sensor in enumerate(iteration.sensors):
-
-				n = "data_%d_node_%d_%d.dat" % (
-						iteration.start_time,
-						sensor.sensor.alh.addr,
-						i)
-				p = os.path.join(dat_path, n)
-
-				sensor.result.write(p)
-
-				tracefile_ = etree.SubElement(iteration_, "traceFile")
-				tracefile_.text = p
-
-		self.save(open(cdf_path, "w"))
-
-		self._unsaved_iterations = []
-
-	def add_credentials(self, base_url):
-		return base_url
-
-	def log(self, msg):
-		vesna.alh.common.log(msg)
+		for interferer in self.interferers:
+			yield interferer.device
 
 	def _get_coordinators(self):
 		coordinators = {}
 
-		for device in self.devices:
+		for device in self.iter_all_devices():
 			args = (device.base_url, device.cluster_id)
 			if args not in coordinators:
 				coordinator = vesna.alh.ALHWeb(*args)
@@ -224,34 +145,43 @@ class CDFExperiment:
 	def _get_nodes(self):
 		coordinators = self._get_coordinators()
 
-		nodes = []
+		nodes = {}
 
-		for device in self.devices:
-			coordinator = coordinators[device.base_url, device.cluster_id]
-			node = vesna.alh.ALHProxy(coordinator, device.addr)
+		for device in self.iter_all_devices():
+			if device.key() not in nodes:
+				coordinator = coordinators[device.base_url, device.cluster_id]
 
-			node.post("prog/firstCall", "1")
+				node = vesna.alh.ALHProxy(coordinator, device.addr)
 
-			nodes.append(node)
+				node.post("prog/firstCall", "1")
+
+				nodes[device.key()] = node
+			else:
+				raise CDFError("Device %s used more than once" % device)
 
 		return nodes
 
 	def run(self, iteration):
-		sensors = iteration.sensors = []
+		sensors = iteration.sensors
+		intererers = iteration.interferers
 
-		for node in self._get_nodes():
+		nodes = self._get_nodes()
+
+		for device in self.devices:
 			sensor = CDFExperimentSensor()
 
+			node = nodes[device.key()]
 			sensor.sensor = vesna.alh.spectrumsensor.SpectrumSensor(node)
 
 			config_list = sensor.sensor.get_config_list()
 
 			sweep_config = config_list.get_sweep_config(
-				start_hz=self.start_hz,
-				stop_hz=self.stop_hz,
-				step_hz=self.step_hz)
+					start_hz=self.start_hz,
+					stop_hz=self.stop_hz,
+					step_hz=self.step_hz)
 
-			assert sweep_config is not None
+			if sweep_config is None:
+				raise CDFError("Device %s cannot scan desired frequency range" % device)
 
 			sensor.program = vesna.alh.spectrumsensor.SpectrumSensorProgram(
 					sweep_config, 
@@ -261,8 +191,33 @@ class CDFExperiment:
 
 			sensors.append(sensor)
 
+		for interferer in self.interferers:
+			einterferer = CDFExperimentInterferer()
+
+			node = nodes[interferer.device.key()]
+			einterferer.generator = vesna.alh.signalgenerator.SignalGenerator(node)
+
+			config_list = einterferer.generator.get_config_list()
+
+			tx_config = config_list.get_tx_config(
+					f_hz=interferer.center_hz,
+					power_dbm=interferer.power_dbm)
+
+			if tx_config is None:
+				raise CDFError("Device %s cannot transmit at desired "
+						"frequency range" % device)
+
+			einterferer.program = vesna.alh.signalgenerator.SignalGeneratorProgram(
+					tx_config,
+					interferer.start_time,
+					interferer.end_time - interferer.start_time)
+
+			interferers.append(einterferer)
+
 		for sensor in sensors:
 			sensor.sensor.program(sensor.program)
+		for interferer in interferers:
+			interferer.generator.program(einterferer.program)
 
 		for sensor in sensors:
 			while not sensor.sensor.is_complete(sensor.program):
@@ -276,6 +231,4 @@ class CDFExperiment:
 
 			sensor.result = sensor.sensor.retrieve(sensor.program)
 
-		self._unsaved_iterations.append(iteration)
-
-#ex = CDFExperiment.load("cdf/VESNA_SS_24GHz.xml")
+		self.iterations.append(iteration)

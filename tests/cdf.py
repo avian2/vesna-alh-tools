@@ -1,19 +1,21 @@
 import unittest
 import StringIO
+import datetime
 
 import vesna.cdf
+import vesna.cdf.xml
 
 class TestCDFMetadata(unittest.TestCase):
 	def test_empty(self):
-		obj2 = vesna.cdf._metadata_decode("")
+		obj2 = vesna.cdf.xml._metadata_decode("")
 
 		self.assertEqual(obj2, None)
 
 	def test_basic(self):
 		obj = ['foo']
 
-		b = vesna.cdf._metadata_encode(obj)
-		obj2 = vesna.cdf._metadata_decode(b)
+		b = vesna.cdf.xml._metadata_encode(obj)
+		obj2 = vesna.cdf.xml._metadata_decode(b)
 
 		self.assertEqual(obj, obj2)
 
@@ -22,22 +24,22 @@ class TestCDFMetadata(unittest.TestCase):
 
 		obj = ['foo']
 
-		b = vesna.cdf._metadata_encode(obj, old_str)
-		obj2 = vesna.cdf._metadata_decode(b)
+		b = vesna.cdf.xml._metadata_encode(obj, old_str)
+		obj2 = vesna.cdf.xml._metadata_decode(b)
 
 		self.assertEqual(obj, obj2)
 		self.assertTrue(b.startswith(old_str))
 
 		obj = ['bar']
 
-		b = vesna.cdf._metadata_encode(obj, b)
-		obj2 = vesna.cdf._metadata_decode(b)
+		b = vesna.cdf.xml._metadata_encode(obj, b)
+		obj2 = vesna.cdf.xml._metadata_decode(b)
 
 		self.assertEqual(obj, obj2)
 		self.assertTrue(b.startswith(old_str))
 
-class TestCDFExperiment(unittest.TestCase):
-	def test_create_save_load(self):
+class TestCDFXMLExperiment(unittest.TestCase):
+	def xest_create_save_load(self):
 		e = vesna.cdf.CDFExperiment(title="test experiment", summary="test experiment",
 				start_hz=1, stop_hz=10, step_hz=1)
 		
@@ -46,8 +48,6 @@ class TestCDFExperiment(unittest.TestCase):
 
 		f = StringIO.StringIO()
 		e.save(f)
-
-		print f.getvalue()
 
 		f.seek(0)
 		e2 = vesna.cdf.CDFExperiment.load(f)
@@ -62,3 +62,65 @@ class TestCDFExperiment(unittest.TestCase):
 		self.assertEqual(e.devices[0].base_url, e2.devices[0].base_url)
 		self.assertEqual(e.devices[0].cluster_id, e2.devices[0].cluster_id)
 		self.assertEqual(e.devices[0].addr, e2.devices[0].addr)
+
+class TestCDFExperiment(unittest.TestCase):
+	def test_create_iteration(self):
+		i = vesna.cdf.CDFExperimentIteration(
+				start_time=datetime.datetime.now(),
+				end_time=datetime.datetime.now())
+
+	def test_create_experiment(self):
+
+		e = vesna.cdf.CDFExperiment(
+				title="Test experiment",
+				summary="Experiment summary",
+				release_date=datetime.datetime.now(),
+				methodology="Collection methodology",
+				related_experiments="Related experiments",
+				notes="Notes")
+
+		a = vesna.cdf.CDFAuthor(
+				name="John",
+				email="john@example.com",
+				address="Nowhere",
+				phone="0",
+				institution="Institute of Imaginary Science")
+		e.add_author(a)
+
+		d = vesna.cdf.CDFDocument(
+				description="A document",
+				bibtex="BibTeX")
+		e.add_document(d)
+
+		e.set_frequency_range(
+				start_hz=100e6,
+				stop_hz=200e6,
+				step_hz=1e6)
+
+		e.set_duration(datetime.timedelta(seconds=60))
+
+		d = vesna.cdf.CDFDevice(
+				base_url="http://example.com/communicator", 
+				cluster_id=10000, 
+				addr=1)
+
+		e.add_device(d)
+
+		d = vesna.cdf.CDFDevice(
+				base_url="http://example.com/communicator", 
+				cluster_id=10000, 
+				addr=2)
+
+		p = vesna.cdf.CDFInterferer(
+				device=d,
+
+				center_hz=150e6,
+				power_dbm=0,
+
+				device_id=0,
+				config_id=0,
+
+				start_time=datetime.timedelta(seconds=10),
+				end_time=datetime.timedelta(seconds=20))
+
+		e.add_interferer(p)
