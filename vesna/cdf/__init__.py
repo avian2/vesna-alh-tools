@@ -1,11 +1,15 @@
 import datetime
 import json
+import logging
 import os.path
 import time
 import uuid
 import vesna.alh
 import vesna.alh.spectrumsensor
+import vesna.alh.signalgenerator
 import vesna.alh.common
+
+log = logging.getLogger(__name__)
 
 def force_list(v):
 	if v is None:
@@ -138,7 +142,6 @@ class CDFExperiment:
 			args = (device.base_url, device.cluster_id)
 			if args not in coordinators:
 				coordinator = vesna.alh.ALHWeb(*args)
-				coordinator._log = self.log
 
 				coordinator.post("prog/firstCall", "1")
 
@@ -225,13 +228,13 @@ class CDFExperiment:
 
 		for sensor in sensors:
 			while not sensor.sensor.is_complete(sensor.program):
-				self.log("*** waiting...")
+				log.info("waiting")
 				time.sleep(2)
 
-				if time.time() > (iteration.end_time + 30):
+				if time.time() > (iteration.end_time_u + 30):
 					raise Exception("Something went wrong")
 
-			self.log("*** experiment is finished. retrieving data.")
+			log.info("experiment is finished. retrieving data.")
 
 			sensor.result = sensor.sensor.retrieve(sensor.program)
 
