@@ -177,7 +177,7 @@ class CDFExperiment:
 
 	def run(self, iteration):
 		sensors = iteration.sensors
-		intererers = iteration.interferers
+		interferers = iteration.interferers
 
 		nodes = self._get_nodes()
 
