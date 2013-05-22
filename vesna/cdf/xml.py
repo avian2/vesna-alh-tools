@@ -1,4 +1,5 @@
 import datetime
+import dateutil.parser
 from lxml import etree
 import json
 import os.path
@@ -23,125 +24,96 @@ def _metadata_decode(string):
 
 def text_or_none(xml_tree, xpath):
 	t = xml_tree.find(xpath)
-	if t:
+	if t is not None:
 		return t.text
 	else:
 		return None
-
-class CDFXMLDevice(cdf.CDFDevice):
-	def __init__(self, base_url, cluster_id, addr):
-		self.base_url = base_url
-		self.cluster_id = cluster_id
-		self.addr = addr
-
-	@classmethod
-	def _from_xml(cls, tree):
-		obj = _metadata_decode(tree.find("description").text)
-		return cls(obj['base_url'], obj['cluster_id'], obj['addr'])
-
-	def _to_xml(self):
-		tree = etree.Element("device")
-
-		name = etree.SubElement(tree, "name")
-		name.text = "VESNA node %d" % (self.addr,)
-
-		description = etree.SubElement(tree, "description")
-		description.text = _metadata_encode({
-			"base_url": self.base_url,
-			"cluster_id": self.cluster_id,
-			"addr": self.addr})
-
-		return tree
 
 class CDFXMLExperiment:
 	def __init__(self, experiment):
 		self.exp = experiment
 
-	def get_experiment():
+	def get_experiment(self):
 		return self.exp
 
 	@classmethod
 	def load(cls, f):
-		xml_tree = etree.parse(f)
+		root = etree.parse(f)
 
+		exp = cls._from_xml(root)
 
-		title = text_or_none(xml_tree, "experimentAbstract/title")
+		return cls(exp)
 
-		tag = text_or_none(xml_tree, "experimentAbstract/uniqueCREWTag")
+	@classmethod
+	def _from_xml(cls, root):
+		title = text_or_none(root, "experimentAbstract/title")
 
-		authors = []
-		for author in xml_tree.findall("experimentAbstract/author"):
-			authors.append(CDFXMLAuthor.from_tree(author))
+		tag = text_or_none(root, "experimentAbstract/uniqueCREWTag")
 
-		release_date_t = text_or_none(xml_tree, "experimentAbstract/releaseDate")
-		release_date = datetime.datetime.strptime(release_date_t, "%Y-%m-%d")
+		summary = text_or_none(root, "experimentAbstract/experimentSummary")
 
-		summary = text_or_none(xml_tree, "experimentAbstract/experimentSummary")
+		release_date = text_or_none(root, "experimentAbstract/releaseDate")
+		release_date = dateutil.parser.parse(release_date)
 
 		methodology = []
-		for m in xml_tree.findall("experimentAbstract/collectionMethodology"):
-			methodology.append(m.text)
+		for method in root.findall("experimentAbstract/collectionMethodology"):
+			methodology.append(method.text)
 
-		documentation = []
-		for document in xml_tree.findall("experimentAbstract/furtherDocumentation"):
-			documentation.append(CDFXMLDocument.from_tree(document))
-
-		related_experiments = text_or_none(xml_tree, "experimentAbstract/relatedExperiments")
+		related_experiments = text_or_none(root, "experimentAbstract/relatedExperiments")
 
 		extra = None
 
 		notes = []
-		for note in xml_tree.findall("experimentAbstract/notes"):
-			notes.append(note.text)
+		for note in root.findall("experimentAbstract/notes"):
 
 			o = _metadata_decode(note.text)
 			if o:
 				extra = o
+			else:
+				notes.append(note.text)
 
-		experiment = cls(
-				title=title, 
-				tag=tag,
-				authors=authors,
-				release_date=release_date,
+		experiment = cdf.CDFExperiment(
+				title=title,
 				summary=summary,
+				release_date=release_date,
 				methodology=methodology,
-				documentation=documentation,
 				related_experiments=related_experiments,
 				notes=notes)
 
 
-		start_hz = int(text_or_none(xml_tree, "metaInformation/radioFrequency/startFrequency"))
-		stop_hz = int(text_or_none(xml_tree, "metaInformation/radioFrequency/stopFrequency"))
+		for author in root.findall("experimentAbstract/author"):
+			experiment.add_author(cls._author_from_xml(author))
+
+		for document in root.findall("experimentAbstract/furtherDocumentation"):
+			experiment.add_document(cls._document_from_xml(document))
+
+
+		start_hz = float(text_or_none(root, "metaInformation/radioFrequency/startFrequency"))
+		stop_hz = float(text_or_none(root, "metaInformation/radioFrequency/stopFrequency"))
 		step_hz = extra['step_hz']
 
 		experiment.set_frequency_range(start_hz, stop_hz, step_hz)
 
 
-		duration = datetime.timedelta(seconds=extra['duration'])
+		duration = extra['duration']
 		experiment.set_duration(duration)
 
 
 		devices = {}
-		for d in xml_tree.findall("metaInformation/device"):
-			device = CDFXMLDevice.from_tree(d)
+		for d in root.findall("metaInformation/device"):
+			device = cls._device_from_xml(d)
 			devices[device.key()] = device
 
+		t = root.find("metaInformation/radioFrequency/interferenceSources").text
+		extra_interferers = _metadata_decode(t)
 
-		extra_interferers = _metadata_decode(xml_tree.find("metaInformation/radioFrequency/interferenceSources"))
-		for extra_interferer in extra_interferers:
-			device = devices.pop(extra_interferer.device)
+		for extra_interferer in extra_interferers['interferers']:
 
-			start_time = datetime.timedelta(seconds=extra_interferer['start_time'])
-			end_time = datetime.timedelta(seconds=extra_interferer['end_time'])
+			device_key = tuple(extra_interferer.pop('device'))
+			device = devices.pop(device_key)
+			extra_interferer['device'] = device
 
-			interferer = CDFInterferer(
-					device=device,
-					center_hz=extra_interferer['center_hz'],
-					power_dbm=extra_interferer['power_dbm'],
-					device_id=extra_interferer['device_id'],
-					config_id=extra_interferer['config_id'],
-					start_time=start_time,
-					end_time=end_time)
+			interferer = cdf.CDFInterferer(**extra_interferer)
 
 			experiment.add_interferer(interferer)
 
@@ -149,6 +121,51 @@ class CDFXMLExperiment:
 			experiment.add_device(device)
 
 		return experiment
+
+	@classmethod
+	def _author_from_xml(cls, root):
+		
+		name = text_or_none(root, "name")
+		email = text_or_none(root, "email")
+
+		address = []
+		for t in root.findall("address"):
+			address.append(t.text)
+
+		phone = []
+		for t in root.findall("phone"):
+			phone.append(t.text)
+
+		institution = []
+		for t in root.findall("institution"):
+			institution.append(t.text)
+
+		return cdf.CDFAuthor(
+				name=name,
+				email=email,
+				address=address,
+				phone=phone,
+				institution=institution)
+
+	@classmethod
+	def _document_from_xml(cls, root):
+		
+		description = []
+		for t in root.findall("description"):
+			description.append(t.text)
+
+		bibtex = []
+		for t in root.findall("bibtex"):
+			bibtex.append(t.text)
+
+		return cdf.CDFDocument(
+				description=description,
+				bibtex=bibtex)
+
+	@classmethod
+	def _device_from_xml(cls, root):
+		extra = _metadata_decode(text_or_none(root, "description"))
+		return cdf.CDFDevice(**extra)
 
 	def _format_date(self, date):
 		return date.isoformat()
@@ -184,7 +201,9 @@ class CDFXMLExperiment:
 		related = etree.SubElement(abstract, "relatedExperiments")
 		related.text = self.exp.related_experiments
 
-		ext_note = _metadata_encode({"duration": self.exp.duration})
+		ext_note = _metadata_encode({
+			"duration": self.exp.duration,
+			"step_hz": self.exp.step_hz})
 
 		for t in self.exp.notes + [ext_note]:
 			note = etree.SubElement(abstract, "notes")

@@ -17,7 +17,7 @@ def force_list(v):
 	elif isinstance(v, str) or isinstance(v, unicode):
 		return [ v ]
 	else:
-		v
+		return v
 
 class CDFError(Exception): pass
 
