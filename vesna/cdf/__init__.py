@@ -21,16 +21,22 @@ def force_list(v):
 
 class CDFError(Exception): pass
 
-class CDFInterferer:
-	def __init__(self, device, center_hz, power_dbm, start_time, end_time, 
-			device_id=None, config_id=None):
-		self.device = device
+class CDFInterfererProgram:
+	def __init__(self, center_hz, power_dbm, start_time, end_time, device_id=None, config_id=None):
 		self.center_hz = center_hz
 		self.power_dbm = power_dbm
 		self.device_id = device_id
 		self.config_id = config_id
 		self.start_time = start_time
 		self.end_time = end_time
+
+class CDFInterferer:
+	def __init__(self, device):
+		self.device = device
+		self.programs = []
+
+	def add_program(self, program):
+		self.programs.append(program)
 
 class CDFDevice:
 	def __init__(self, base_url, cluster_id, addr):
@@ -70,9 +76,15 @@ class CDFExperimentIteration:
 
 		self.tracefiles = []
 
-class CDFExperimentSensor: pass
+class CDFExperimentSensor:
+	def __init__(self, sensor):
+		self.sensor = sensor
 
-class CDFExperimentInterferer: pass
+class CDFExperimentInterferer:
+	def __init__(self, generator):
+		self.generator = generator
+
+		self.programs = []
 
 class CDFExperiment:
 	def __init__(self, title, summary, related_experiments, notes, methodology=None,
@@ -184,10 +196,9 @@ class CDFExperiment:
 		iteration.end_time = datetime.datetime.fromtimestamp(end_time)
 
 		for device in self.devices:
-			sensor = CDFExperimentSensor()
-
 			node = nodes[device.key()]
-			sensor.sensor = vesna.alh.spectrumsensor.SpectrumSensor(node)
+
+			sensor = CDFExperimentSensor(vesna.alh.spectrumsensor.SpectrumSensor(node))
 
 			config_list = sensor.sensor.get_config_list()
 
@@ -208,32 +219,34 @@ class CDFExperiment:
 			sensors.append(sensor)
 
 		for interferer in self.interferers:
-			einterferer = CDFExperimentInterferer()
-
 			node = nodes[interferer.device.key()]
-			einterferer.generator = vesna.alh.signalgenerator.SignalGenerator(node)
+
+			einterferer = CDFExperimentInterferer(
+					vesna.alh.signalgenerator.SignalGenerator(node))
 
 			config_list = einterferer.generator.get_config_list()
 
-			tx_config = config_list.get_tx_config(
-					f_hz=interferer.center_hz,
-					power_dbm=interferer.power_dbm)
+			for program in interferer.programs:
+				tx_config = config_list.get_tx_config(
+						f_hz=program.center_hz,
+						power_dbm=program.power_dbm)
 
-			if tx_config is None:
-				raise CDFError("Device %s cannot transmit at desired "
-						"frequency range" % device)
+				if tx_config is None:
+					raise CDFError("Device %s cannot transmit at desired "
+							"frequency range" % device)
 
-			einterferer.program = vesna.alh.signalgenerator.SignalGeneratorProgram(
-					tx_config,
-					start_time + interferer.start_time,
-					interferer.end_time - interferer.start_time)
+				einterferer.programs.append(vesna.alh.signalgenerator.SignalGeneratorProgram(
+						tx_config,
+						start_time + program.start_time,
+						program.end_time - program.start_time))
 
-			interferers.append(einterferer)
+				interferers.append(einterferer)
 
 		for sensor in sensors:
 			sensor.sensor.program(sensor.program)
 		for interferer in interferers:
-			interferer.generator.program(einterferer.program)
+			for program in interferer.programs:
+				interferer.generator.program(program)
 
 		for sensor in sensors:
 			while not sensor.sensor.is_complete(sensor.program):

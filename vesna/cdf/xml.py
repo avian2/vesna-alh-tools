@@ -104,18 +104,8 @@ class CDFXMLExperiment:
 			device = cls._device_from_xml(d)
 			devices[device.key()] = device
 
-		t = root.find("metaInformation/radioFrequency/interferenceSources").text
-		extra_interferers = _metadata_decode(t)
-
-		for extra_interferer in extra_interferers['interferers']:
-
-			device_key = tuple(extra_interferer.pop('device'))
-			device = devices.pop(device_key)
-			extra_interferer['device'] = device
-
-			interferer = cdf.CDFInterferer(**extra_interferer)
-
-			experiment.add_interferer(interferer)
+		interference = root.find("metaInformation/radioFrequency/interferenceSources")
+		cls._interferers_from_xml(interference, experiment, devices)
 
 		for device in devices.itervalues():
 			experiment.add_device(device)
@@ -166,6 +156,22 @@ class CDFXMLExperiment:
 	def _device_from_xml(cls, root):
 		extra = _metadata_decode(text_or_none(root, "description"))
 		return cdf.CDFDevice(**extra)
+
+	@classmethod
+	def _interferers_from_xml(cls, root, experiment, devices):
+		extra_interferers = _metadata_decode(root.text)
+
+		for extra_interferer in extra_interferers['interferers']:
+
+			device_key = tuple(extra_interferer['device'])
+			device = devices.pop(device_key)
+
+			interferer = cdf.CDFInterferer(device=device)
+
+			experiment.add_interferer(interferer)
+
+			for program in extra_interferer['programs']:
+				interferer.add_program(cdf.CDFInterfererProgram(**program))
 
 	def _format_date(self, date):
 		return date.isoformat()
@@ -233,19 +239,7 @@ class CDFXMLExperiment:
 		stop = etree.SubElement(rf, "stopFrequency")
 		stop.text = str(self.exp.stop_hz)
 
-
-		i_list = []
-		for interferer in self.exp.interferers:
-			i_struct = {
-				'device': interferer.device.key(),
-				'center_hz': interferer.center_hz,
-				'power_dbm': interferer.power_dbm,
-				'start_time': interferer.start_time,
-				'end_time': interferer.end_time }
-			i_list.append(i_struct)
-
-		interference = etree.SubElement(rf, "interferenceSources")
-		interference.text = _metadata_encode({"interferers": i_list})
+		rf.append(self._interferers_to_xml())
 
 		trace = etree.XML("""<traceDescription><format>Tab-separated-values file with timestamp, frequency, power triplets.</format><fileFormat><header>Comment line, starting with #</header><collectedMetrics><name>time</name><unitOfMeasurements>s</unitOfMeasurements></collectedMetrics><collectedMetrics><name>frequency</name><unitOfMeasurements>Hz</unitOfMeasurements></collectedMetrics><collectedMetrics><name>power</name><unitOfMeasurements>dBm</unitOfMeasurements></collectedMetrics></fileFormat></traceDescription>""")
 
@@ -325,6 +319,30 @@ class CDFXMLExperiment:
 			path.text = tracefile
 
 		return root
+
+	def _interferers_to_xml(self):
+
+		i_list = []
+		for interferer in self.exp.interferers:
+			p_list = []
+			for program in interferer.programs:
+				p_struct = {
+					'center_hz': program.center_hz,
+					'power_dbm': program.power_dbm,
+					'start_time': program.start_time,
+					'end_time': program.end_time }
+				p_list.append(p_struct)
+
+			i_struct = {
+				'device': interferer.device.key(),
+				'programs': p_list }
+
+			i_list.append(i_struct)
+
+		interference = etree.Element("interferenceSources")
+		interference.text = _metadata_encode({"interferers": i_list})
+
+		return interference
 
 	def save(self, f):
 		tree = self._to_xml()
