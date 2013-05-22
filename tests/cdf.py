@@ -69,9 +69,9 @@ class TestCDFExperiment(unittest.TestCase):
 				start_time=datetime.datetime.now(),
 				end_time=datetime.datetime.now())
 
-	def test_create_experiment(self):
+	def create_experiment(self, cls):
 
-		e = vesna.cdf.CDFExperiment(
+		e = cls(
 				title="Test experiment",
 				summary="Experiment summary",
 				release_date=datetime.datetime.now(),
@@ -124,3 +124,21 @@ class TestCDFExperiment(unittest.TestCase):
 				end_time=datetime.timedelta(seconds=20))
 
 		e.add_interferer(p)
+
+		return e
+
+	def test_create(self):
+		self.create_experiment(vesna.cdf.CDFExperiment)
+
+	def test_xml_create(self):
+		e = self.create_experiment(vesna.cdf.xml.CDFXMLExperiment)
+
+	def test_xml_save(self):
+		io = StringIO.StringIO()
+
+		e = self.create_experiment(vesna.cdf.xml.CDFXMLExperiment)
+		e.save(io)
+
+		print io.getvalue()
+
+		self.assertEqual(io.getvalue(), "")

@@ -64,7 +64,7 @@ class CDFExperimentSensor: pass
 class CDFExperimentInterferer: pass
 
 class CDFExperiment:
-	def __init__(self, title, summary, methodology, related_experiments, notes, 
+	def __init__(self, title, summary, methodology=None, related_experiments, notes, 
 			tag=None, release_date=None, authors=None, documentation=None, devices=None, 
 			interferers=None):
 
