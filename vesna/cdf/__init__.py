@@ -28,6 +28,9 @@ class CDFInterferer:
 		self.start_time = start_time
 		self.end_time = end_time
 
+		self.start_time_u = time.mktime(start_time.timetuple())
+		self.end_time_u = time.mktime(end_time.timetuple())
+
 class CDFDevice:
 	def __init__(self, base_url, cluster_id, addr):
 		self.base_url = base_url
@@ -186,8 +189,8 @@ class CDFExperiment:
 
 			sensor.program = vesna.alh.spectrumsensor.SpectrumSensorProgram(
 					sweep_config, 
-					iteration.start_time,
-					iteration.end_time - iteration.start_time,
+					iteration.start_time_u,
+					iteration.end_time_u - iteration.start_time_u,
 					slot_id=iteration.slot_id)
 
 			sensors.append(sensor)
@@ -210,8 +213,8 @@ class CDFExperiment:
 
 			einterferer.program = vesna.alh.signalgenerator.SignalGeneratorProgram(
 					tx_config,
-					interferer.start_time,
-					interferer.end_time - interferer.start_time)
+					interferer.start_time_u,
+					interferer.end_time_u - interferer.start_time_u)
 
 			interferers.append(einterferer)
 
