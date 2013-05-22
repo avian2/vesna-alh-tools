@@ -53,12 +53,6 @@ class CDFXMLDevice(cdf.CDFDevice):
 
 		return tree
 
-class CDFExperimentIteration:
-	def __init__(self, start_time, end_time, slot_id=10):
-		self.start_time = start_time
-		self.end_time = end_time
-		self.slot_id = slot_id
-
 class CDFXMLExperiment:
 	def __init__(self, experiment):
 		self.exp = experiment
@@ -234,11 +228,14 @@ class CDFXMLExperiment:
 		interference = etree.SubElement(rf, "interferenceSources")
 		interference.text = _metadata_encode({"interferers": i_list})
 
-		trace = etree.SubElement(meta, "traceDescription")
-
 		trace = etree.XML("""<traceDescription><format>Tab-separated-values file with timestamp, frequency, power triplets.</format><fileFormat><header>Comment line, starting with #</header><collectedMetrics><name>time</name><unitOfMeasurements>s</unitOfMeasurements></collectedMetrics><collectedMetrics><name>frequency</name><unitOfMeasurements>Hz</unitOfMeasurements></collectedMetrics><collectedMetrics><name>power</name><unitOfMeasurements>dBm</unitOfMeasurements></collectedMetrics></fileFormat></traceDescription>""")
 
 		meta.append(trace)
+
+
+		for iteration in self.exp.iterations:
+			if iteration.start_time:
+				root.append(self._iteration_to_xml(iteration))
 
 		tree = etree.ElementTree(root)
 		return tree
@@ -293,13 +290,30 @@ class CDFXMLExperiment:
 
 		return root
 
+	def _iteration_to_xml(self, iteration):
+		root = etree.Element("experimentIteration")
+
+		time = etree.SubElement(root, "time")
+
+		start = etree.SubElement(time, "starttime")
+		start.text = self._format_date(iteration.start_time)
+
+		end = etree.SubElement(time, "endtime")
+		end.text = self._format_date(iteration.end_time)
+
+		for tracefile in iteration.tracefiles:
+			path = etree.SubElement(root, "traceFile")
+			path.text = tracefile
+
+		return root
+
 	def save(self, f):
 		tree = self._to_xml()
 		tree.write(f, pretty_print=True, encoding='utf8')
 
 	def save_all(self, path=None):
 		if path is None:
-			path = self.tag
+			path = self.exp.tag
 
 		cdf_path = path + ".cdf"
 		dat_path = path + ".dat"
@@ -309,30 +323,17 @@ class CDFXMLExperiment:
 		except OSError:
 			pass
 
-		for iteration in self._unsaved_iterations:
-			iteration_ = etree.SubElement(self.xml_tree.getroot(), "experimentIteration")
-
-			time_ = etree.SubElement(iteration_, "time")
-
-			starttime_ = etree.SubElement(time_, "starttime")
-			starttime_.text = datetime.datetime.fromtimestamp(iteration.start_time).isoformat()
-
-			endtime_ = etree.SubElement(time_, "endtime")
-			endtime_.text = datetime.datetime.fromtimestamp(iteration.end_time).isoformat()
-
+		for iteration in self.exp.iterations:
 			for i, sensor in enumerate(iteration.sensors):
 
-				n = "data_%d_node_%d_%d.dat" % (
-						iteration.start_time,
+				n = "data_%s_node_%d_%d.dat" % (
+						iteration.start_time.strftime("%Y%m%d"),
 						sensor.sensor.alh.addr,
 						i)
 				p = os.path.join(dat_path, n)
 
 				sensor.result.write(p)
 
-				tracefile_ = etree.SubElement(iteration_, "traceFile")
-				tracefile_.text = p
+				iteration.tracefiles.append(p)
 
 		self.save(open(cdf_path, "w"))
-
-		self._unsaved_iterations = []

@@ -65,6 +65,11 @@ class CDFExperimentIteration:
 		self.sensors = []
 		self.interferers = []
 
+		self.start_time = None
+		self.end_time = None
+
+		self.tracefiles = []
+
 class CDFExperimentSensor: pass
 
 class CDFExperimentInterferer: pass
