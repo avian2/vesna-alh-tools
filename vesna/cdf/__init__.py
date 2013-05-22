@@ -38,7 +38,8 @@ class CDFDevice:
 		return (self.base_url, self.cluster_id, self.addr)
 
 	def __str__(self):
-		return "<CDFDevice base_url=%s cluster_id=%d addr=%d>" % (base_url, cluster_id, addr)
+		return "<CDFDevice base_url=%s cluster_id=%d addr=%d>" % (
+				self.base_url, self.cluster_id, self.addr)
 
 class CDFAuthor:
 	def __init__(self, name, email, address=None, phone=None, institution=None):
