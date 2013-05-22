@@ -65,9 +65,7 @@ class TestCDFXMLExperiment(unittest.TestCase):
 
 class TestCDFExperiment(unittest.TestCase):
 	def test_create_iteration(self):
-		i = vesna.cdf.CDFExperimentIteration(
-				start_time=datetime.datetime.now(),
-				end_time=datetime.datetime.now())
+		i = vesna.cdf.CDFExperimentIteration()
 
 	def create_experiment(self):
 
@@ -97,7 +95,7 @@ class TestCDFExperiment(unittest.TestCase):
 				stop_hz=200e6,
 				step_hz=1e6)
 
-		e.set_duration(datetime.timedelta(seconds=60))
+		e.set_duration(60)
 
 		d = vesna.cdf.CDFDevice(
 				base_url="http://example.com/communicator", 
@@ -120,8 +118,8 @@ class TestCDFExperiment(unittest.TestCase):
 				device_id=0,
 				config_id=0,
 
-				start_time=datetime.datetime.now()+datetime.timedelta(seconds=10),
-				end_time=datetime.datetime.now()+datetime.timedelta(seconds=20))
+				start_time=10,
+				end_time=20)
 
 		e.add_interferer(p)
 

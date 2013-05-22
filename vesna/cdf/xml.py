@@ -190,7 +190,9 @@ class CDFXMLExperiment:
 		related = etree.SubElement(abstract, "relatedExperiments")
 		related.text = self.exp.related_experiments
 
-		for t in self.exp.notes:
+		ext_note = _metadata_encode({"duration": self.exp.duration})
+
+		for t in self.exp.notes + [ext_note]:
 			note = etree.SubElement(abstract, "notes")
 			note.text = t
 

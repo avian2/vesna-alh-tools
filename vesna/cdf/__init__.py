@@ -32,9 +32,6 @@ class CDFInterferer:
 		self.start_time = start_time
 		self.end_time = end_time
 
-		self.start_time_u = time.mktime(start_time.timetuple())
-		self.end_time_u = time.mktime(end_time.timetuple())
-
 class CDFDevice:
 	def __init__(self, base_url, cluster_id, addr):
 		self.base_url = base_url
@@ -62,13 +59,7 @@ class CDFDocument:
 		self.bibtex = force_list(bibtex)
 
 class CDFExperimentIteration:
-	def __init__(self, start_time, end_time, slot_id=10):
-		self.start_time = start_time
-		self.end_time = end_time
-
-		self.start_time_u = time.mktime(start_time.timetuple())
-		self.end_time_u = time.mktime(end_time.timetuple())
-
+	def __init__(self, slot_id=10):
 		self.slot_id = slot_id
 
 		self.sensors = []
@@ -181,6 +172,12 @@ class CDFExperiment:
 
 		nodes = self._get_nodes()
 
+		start_time = time.time() + 15.0
+		end_time = start_time + self.duration
+
+		iteration.start_time = datetime.datetime.fromtimestamp(start_time)
+		iteration.end_time = datetime.datetime.fromtimestamp(end_time)
+
 		for device in self.devices:
 			sensor = CDFExperimentSensor()
 
@@ -199,8 +196,8 @@ class CDFExperiment:
 
 			sensor.program = vesna.alh.spectrumsensor.SpectrumSensorProgram(
 					sweep_config, 
-					iteration.start_time_u,
-					iteration.end_time_u - iteration.start_time_u,
+					start_time,
+					end_time - start_time,
 					slot_id=iteration.slot_id)
 
 			sensors.append(sensor)
@@ -223,8 +220,8 @@ class CDFExperiment:
 
 			einterferer.program = vesna.alh.signalgenerator.SignalGeneratorProgram(
 					tx_config,
-					interferer.start_time_u,
-					interferer.end_time_u - interferer.start_time_u)
+					start_time + interferer.start_time,
+					interferer.end_time - interferer.start_time)
 
 			interferers.append(einterferer)
 
@@ -238,7 +235,7 @@ class CDFExperiment:
 				log.info("waiting")
 				time.sleep(2)
 
-				if time.time() > (iteration.end_time_u + 30):
+				if time.time() > (end_time + 30):
 					raise Exception("Something went wrong")
 
 			log.info("experiment is finished. retrieving data.")
