@@ -151,7 +151,7 @@ class CDFXMLExperiment:
 		return experiment
 
 	def _format_date(self, date):
-		return str(date)
+		return date.isoformat()
 
 	def _to_xml(self):
 		root = etree.Element("experimentDescription")
