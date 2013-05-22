@@ -65,14 +65,21 @@ class CDFExperimentIteration:
 	def __init__(self, start_time, end_time, slot_id=10):
 		self.start_time = start_time
 		self.end_time = end_time
+
+		self.start_time_u = time.mktime(start_time.timetuple())
+		self.end_time_u = time.mktime(end_time.timetuple())
+
 		self.slot_id = slot_id
+
+		self.sensors = []
+		self.interferers = []
 
 class CDFExperimentSensor: pass
 
 class CDFExperimentInterferer: pass
 
 class CDFExperiment:
-	def __init__(self, title, summary, methodology=None, related_experiments, notes, 
+	def __init__(self, title, summary, related_experiments, notes, methodology=None,
 			tag=None, release_date=None, authors=None, documentation=None, devices=None, 
 			interferers=None):
 
