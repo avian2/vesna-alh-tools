@@ -59,81 +59,13 @@ class CDFExperimentIteration:
 		self.end_time = end_time
 		self.slot_id = slot_id
 
-class CDFXMLExperiment(cdf.CDFExperiment):
-#	def __init__(self, title, summary, start_hz, stop_hz, step_hz, tag=None, _xml_tree=None):
-#		self.devices = []
-#		self.title = title
-#		self.summary = summary
-#		self.start_hz = start_hz
-#		self.stop_hz = stop_hz
-#		self.step_hz = step_hz
-#
-#		if tag is None:
-#			tag = "vesna-alh-tools-" + str(uuid.uuid4())
-#
-#		self.tag = tag
-#
-#		self._unsaved_iterations = []
-#
-#		if _xml_tree:
-#			self.xml_tree = _xml_tree
-#		else:
-#
-#			now = datetime.datetime.now()
-#
-#			t = """<experimentDescription>
-#	<experimentAbstract>
-#	</experimentAbstract>
-#	<metaInformation>
-#		<radioFrequency>
-#			<startFrequency>%(start_hz)d</startFrequency>
-#			<stopFrequency>%(stop_hz)d</stopFrequency>
-#		</radioFrequency>
-#		<date>%(date)s</date>
-#		<traceDescription>
-#			<format>Tab-separated-values file with timestamp, frequency, power triplets.</format>
-#			<fileFormat>
-#				<header>Comment line, starting with #</header>
-#				<collectedMetrics>
-#					<name>time</name>
-#					<unitOfMeasurements>s</unitOfMeasurements>
-#				</collectedMetrics>
-#				<collectedMetrics>
-#					<name>frequency</name>
-#					<unitOfMeasurements>Hz</unitOfMeasurements>
-#				</collectedMetrics>
-#				<collectedMetrics>
-#					<name>power</name>
-#					<unitOfMeasurements>dBm</unitOfMeasurements>
-#				</collectedMetrics>
-#			</fileFormat>
-#		</traceDescription>
-#	</metaInformation>
-#</experimentDescription>""" % {	"start_hz": start_hz, "stop_hz": stop_hz, "date": now.isoformat() }
-#
-#			# remove whitespace - it's added later through pretty_print
-#			t = t.replace("\t", "").replace("\n", "")
-#			self.xml_tree = etree.ElementTree(etree.XML(t))
-#
-#			abstract = self.xml_tree.find("experimentAbstract")
-#
-#			title_ = etree.SubElement(abstract, "title")
-#			title_.text = title
-#
-#			tag_ = etree.SubElement(abstract, "uniqueCREWTag")
-#			tag_.text = tag
-#
-#			date_ = etree.SubElement(abstract, "releaseDate")
-#			date_.text = now.isoformat()
-#
-#			summary_ = etree.SubElement(abstract, "experimentSummary")
-#			summary_.text = summary
-#
-#			etree.SubElement(abstract, "relatedExperiments")
-#
-#			notes_ = etree.SubElement(abstract, "notes")
-#			notes_.text = _metadata_encode({"step_hz": step_hz})
-#
+class CDFXMLExperiment:
+	def __init__(self, experiment):
+		self.exp = experiment
+
+	def get_experiment():
+		return self.exp
+
 	@classmethod
 	def load(cls, f):
 		xml_tree = etree.parse(f)
@@ -234,38 +166,38 @@ class CDFXMLExperiment(cdf.CDFExperiment):
 		abstract = etree.SubElement(root, "experimentAbstract")
 
 		title = etree.SubElement(abstract, "title")
-		title.text = self.title
+		title.text = self.exp.title
 
 		tag = etree.SubElement(abstract, "uniqueCREWTag")
-		tag.text = self.tag
+		tag.text = self.exp.tag
 
-		for author in self.authors:
+		for author in self.exp.authors:
 			abstract.append(self._author_to_xml(author))
 
 		date = etree.SubElement(abstract, "releaseDate")
-		date.text = self._format_date(self.release_date)
+		date.text = self._format_date(self.exp.release_date)
 
 		summary = etree.SubElement(abstract, "experimentSummary")
-		summary.text = self.summary
+		summary.text = self.exp.summary
 
-		for t in self.methodology:
+		for t in self.exp.methodology:
 			method = etree.SubElement(abstract, "collectionMethodology")
 			method.text = t
 
-		for document in self.documentation:
+		for document in self.exp.documentation:
 			abstract.append(self._document_to_xml(document))
 
 		related = etree.SubElement(abstract, "relatedExperiments")
-		related.text = self.related_experiments
+		related.text = self.exp.related_experiments
 
-		for t in self.notes:
+		for t in self.exp.notes:
 			note = etree.SubElement(abstract, "notes")
 			note.text = t
 
 
 		meta = etree.SubElement(root, "metaInformation")
 
-		for device in self.devices:
+		for device in self.exp.devices:
 			meta.append(self._device_to_xml(device))
 
 		location = etree.SubElement(meta, "location")
@@ -281,10 +213,10 @@ class CDFXMLExperiment(cdf.CDFExperiment):
 		rf = etree.SubElement(meta, "radioFrequency")
 
 		start = etree.SubElement(rf, "startFrequency")
-		start.text = str(self.start_hz)
+		start.text = str(self.exp.start_hz)
 
 		stop = etree.SubElement(rf, "stopFrequency")
-		stop.text = str(self.stop_hz)
+		stop.text = str(self.exp.stop_hz)
 
 		# FIXME
 		inteference = etree.SubElement(rf, "interferenceSources")
