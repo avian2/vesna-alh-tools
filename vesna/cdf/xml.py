@@ -199,7 +199,7 @@ class CDFXMLExperiment:
 
 		meta = etree.SubElement(root, "metaInformation")
 
-		for device in self.exp.devices:
+		for device in self.exp.iter_all_devices():
 			meta.append(self._device_to_xml(device))
 
 		location = etree.SubElement(meta, "location")
@@ -220,8 +220,19 @@ class CDFXMLExperiment:
 		stop = etree.SubElement(rf, "stopFrequency")
 		stop.text = str(self.exp.stop_hz)
 
-		# FIXME
-		inteference = etree.SubElement(rf, "interferenceSources")
+
+		i_list = []
+		for interferer in self.exp.interferers:
+			i_struct = {
+				'device': interferer.device.key(),
+				'center_hz': interferer.center_hz,
+				'power_dbm': interferer.power_dbm,
+				'start_time': interferer.start_time,
+				'end_time': interferer.end_time }
+			i_list.append(i_struct)
+
+		interference = etree.SubElement(rf, "interferenceSources")
+		interference.text = _metadata_encode({"interferers": i_list})
 
 		trace = etree.SubElement(meta, "traceDescription")
 
