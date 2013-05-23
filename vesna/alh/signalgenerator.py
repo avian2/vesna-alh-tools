@@ -171,20 +171,32 @@ class SignalGenerator:
 
 		program -- SignalGeneratorProgram object
 		"""
+		return self.program_list([program])
+
+	def program_list(self, program_list):
+		"""Send several signal generator programs to the node.
+
+		program_list -- List of SignalGeneratorProgram objects.
+		"""
 		time_before = time.time()
 
-		relative_time = int(program.time_start - time_before)
-		if relative_time < 0:
-			raise Exception("Start time can't be in the past")
+		data_list = []
 
-		self.alh.post("generator/program",
-			"in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
-				relative_time,
-				program.time_duration,
-				program.tx_config.config.device.id,
-				program.tx_config.config.id,
-				program.tx_config.f_ch,
-				program.tx_config.power_dbm))
+		for program in program_list:
+
+			relative_time = int(program.time_start - time_before)
+			if relative_time < 0:
+				raise Exception("Start time can't be in the past")
+
+			data_list.append("in %d sec for %d sec with dev %d conf %d channel %d power %d" % (
+					relative_time,
+					program.time_duration,
+					program.tx_config.config.device.id,
+					program.tx_config.config.id,
+					program.tx_config.f_ch,
+					program.tx_config.power_dbm))
+
+		self.alh.post("generator/program", "\n".join(data_list))
 
 		time_after = time.time()
 
