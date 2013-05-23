@@ -159,6 +159,9 @@ class CDFXMLExperiment:
 
 	@classmethod
 	def _interferers_from_xml(cls, root, experiment, devices):
+		if not root.text:
+			return
+
 		extra_interferers = _metadata_decode(root.text)
 
 		for extra_interferer in extra_interferers['interferers']:
