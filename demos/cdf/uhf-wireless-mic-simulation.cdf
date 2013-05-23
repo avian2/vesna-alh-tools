@@ -106,13 +106,13 @@
                     "programs": [
                       {
                         "power_dbm": 0, 
-                        "center_hz": 7870000000.0,
+                        "center_hz": 787000000.0,
                         "start_time": 0, 
                         "end_time": 35 
                       },
                       {
                         "power_dbm": 0, 
-                        "center_hz": 7800000000.0,
+                        "center_hz": 780000000.0,
                         "start_time": 35, 
                         "end_time": 120 
                       }
