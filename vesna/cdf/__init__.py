@@ -192,7 +192,7 @@ class CDFExperiment:
 
 		nodes = self._get_nodes()
 
-		start_time = time.time() + 15.0
+		start_time = time.time() + 5.0 * len(nodes)
 		end_time = start_time + self.duration
 
 		iteration.start_time = datetime.datetime.fromtimestamp(start_time)
