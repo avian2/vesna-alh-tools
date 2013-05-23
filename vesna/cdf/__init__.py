@@ -233,7 +233,7 @@ class CDFExperiment:
 
 				if tx_config is None:
 					raise CDFError("Device %s cannot transmit at desired "
-							"frequency range" % device)
+							"frequency range" % interferer.device)
 
 				einterferer.programs.append(vesna.alh.signalgenerator.SignalGeneratorProgram(
 						tx_config,
