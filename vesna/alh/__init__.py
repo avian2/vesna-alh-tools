@@ -105,8 +105,10 @@ class ALHProtocol:
 		"""
 		return self._post(resource, data, *args)
 
-	def _log_request(self, method, resource, args):
+	def _log_request(self, method, resource, args, data=None):
 		log.info("%8s: %s?%s" % (method, resource, "".join(args)))
+		if data is not None and len(data) > 4 and all(c in string.printable for c in data):
+			log.info("    DATA: %s" % (data,))
 
 	def _log_response(self, resp):
 		if all(c in string.printable for c in resp):
@@ -189,7 +191,7 @@ class ALHTerminal(ALHProtocol):
 		return self._send_with_retry("get %s?%s\r\n" % (resource, arg))
 
 	def _post(self, resource, data, *args):
-		self._log_request("POST", resource, args)
+		self._log_request("POST", resource, args, data)
 
 		arg = "".join(args)
 
@@ -270,7 +272,7 @@ class ALHWeb(ALHProtocol):
 		return self._send_with_retry(url)
 
 	def _post(self, resource, data, *args):
-		self._log_request("POST", resource, args)
+		self._log_request("POST", resource, args, data)
 
 		arg = "".join(args)
 		query = (
