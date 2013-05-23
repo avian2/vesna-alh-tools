@@ -87,7 +87,7 @@ class CDFExperimentInterferer:
 	def __init__(self, generator):
 		self.generator = generator
 
-		self.programs = []
+		self.program_list = []
 
 class CDFExperiment:
 	def __init__(self, title, summary, related_experiments, notes, methodology=None,
@@ -238,18 +238,18 @@ class CDFExperiment:
 					raise CDFError("Device %s cannot transmit at desired "
 							"frequency range" % interferer.device)
 
-				einterferer.programs.append(vesna.alh.signalgenerator.SignalGeneratorProgram(
-						tx_config,
-						start_time + program.start_time,
-						program.end_time - program.start_time))
+				einterferer.program_list.append(
+						vesna.alh.signalgenerator.SignalGeneratorProgram(
+								tx_config,
+								start_time + program.start_time,
+								program.end_time - program.start_time))
 
-				interferers.append(einterferer)
+			interferers.append(einterferer)
 
 		for sensor in sensors:
 			sensor.sensor.program(sensor.program)
 		for interferer in interferers:
-			for program in interferer.programs:
-				interferer.generator.program(program)
+			interferer.generator.program_list(interferer.program_list)
 
 		for sensor in sensors:
 			while not sensor.sensor.is_complete(sensor.program):
