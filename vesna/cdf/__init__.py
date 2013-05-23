@@ -27,6 +27,9 @@ class CDFInterfererProgram:
 		self.power_dbm = power_dbm
 		self.device_id = device_id
 		self.config_id = config_id
+
+		assert end_time > start_time
+
 		self.start_time = start_time
 		self.end_time = end_time
 
