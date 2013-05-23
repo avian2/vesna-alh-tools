@@ -109,9 +109,10 @@ class TestCDFExperiment(unittest.TestCase):
 				cluster_id=10000, 
 				addr=2)
 
-		p = vesna.cdf.CDFInterferer(
-				device=d,
+		i = vesna.cdf.CDFInterferer(
+				device=d)
 
+		p = vesna.cdf.CDFInterfererProgram(
 				center_hz=150e6,
 				power_dbm=0,
 
@@ -121,7 +122,9 @@ class TestCDFExperiment(unittest.TestCase):
 				start_time=10,
 				end_time=20)
 
-		e.add_interferer(p)
+		i.add_program(p)
+
+		e.add_interferer(i)
 
 		return e
 
@@ -132,13 +135,17 @@ class TestCDFExperiment(unittest.TestCase):
 		e = self.create_experiment()
 		vesna.cdf.xml.CDFXMLExperiment(e)
 
-	def test_xml_save(self):
+	def test_xml_save_load(self):
 		io = StringIO.StringIO()
 
 		e = self.create_experiment()
 		e = vesna.cdf.xml.CDFXMLExperiment(e)
 		e.save(io)
 
-		print io.getvalue()
+		#print io.getvalue()
 
-		self.assertEqual(io.getvalue(), "")
+		io.seek(0)
+
+		e2 = vesna.cdf.xml.CDFXMLExperiment.load(io)
+
+		self.assertEqual(e.get_experiment().title, e2.get_experiment().title)
