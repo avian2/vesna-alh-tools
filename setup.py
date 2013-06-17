@@ -5,6 +5,7 @@ import unittest
 
 UNITTESTS = [
 		"cdf",
+		"alh",
 	]
 
 class TestCommand(Command):

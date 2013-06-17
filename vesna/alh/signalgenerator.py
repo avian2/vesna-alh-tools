@@ -120,18 +120,24 @@ class ConfigList:
 
 		return None
 
-	def get_tx_config(self, f_hz, power_dbm):
+	def get_tx_config(self, f_hz, power_dbm, name=None):
 		"""Return best transmission configuration for specified requirements.
 
 		f_hz -- Transmission frequency.
 		power_dbm -- Transmission power.
+		name -- Optional required sub-string in device configuration name.
 		"""
 
 		candidates = []
 
 		for config in self.configs:
-			if config.covers(f_hz, power_dbm):
-				candidates.append(config)
+			if name and name not in config.name:
+				continue
+
+			if not config.covers(f_hz, power_dbm):
+				continue
+
+			candidates.append(config)
 
 		# pick fastest matching config
 		candidates.sort(key=lambda x:x.time, reverse=True)
