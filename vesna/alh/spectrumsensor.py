@@ -37,6 +37,36 @@ class SpectrumSensorResult:
 		self.program = program
 		self.sweeps = []
 
+	def get_hz_list(self):
+		"""Return a list of frequencies in hertz covered by this result.
+		"""
+		return self.program.sweep_config.get_hz_list()
+
+	def get_s_list(self):
+		"""Return a list of timestamps in seconds covered by this result.
+		"""
+		return [ sweep.timestamp for sweep in self.sweeps ]
+
+	def get_data(self):
+		"""Return power measurements in dbm in form a two-dimensional array.
+		"""
+		data = []
+
+		row_len = len(self.program.sweep_config.get_ch_list())
+
+		for sweep in self.sweeps:
+			if len(sweep.data) == row_len:
+				row = sweep.data
+			else:
+				# only last row can be shorter
+				assert len(data) == len(self.sweeps) - 1
+
+				row = sweep.data + [sweep.data[-1]] * (row_len - len(sweep.data))
+
+			data.append(row)
+
+		return data
+
 	def write(self, path):
 		"""Write measurements into a tab-separated-values file.
 
