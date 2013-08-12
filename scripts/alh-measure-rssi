@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from vesna import alh
 from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorProgram
 from vesna.alh.signalgenerator import SignalGenerator, SignalGeneratorProgram, TxConfig
