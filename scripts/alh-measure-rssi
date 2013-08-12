@@ -1,0 +1,176 @@
+#!/usr/bin/python
+from vesna import alh
+from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorProgram
+from vesna.alh.signalgenerator import SignalGenerator, SignalGeneratorProgram, TxConfig
+from vesna.alh import common
+
+import logging
+from optparse import OptionParser
+import os
+import re
+import time
+import datetime
+
+import numpy
+from scipy.cluster.vq import kmeans
+
+log = logging.getLogger(__name__)
+
+tx_config = None
+sweep_config = None
+
+LOG_PATH = None
+
+def get_tx_config(generator, want_f_hz):
+	global tx_config
+
+	if tx_config is None:
+		config_list = generator.get_config_list()
+		tx_config = config_list.get_tx_config(f_hz=want_f_hz, power_dbm=0)
+
+		tx_config.power_dbm = tx_config.config.max_power
+
+	f_hz = tx_config.config.ch_to_hz(tx_config.f_ch)
+
+	log.info("TX: ch=%d f=%d Hz df=%d Hz bw=%d Hz P=%f dBm" % (
+			tx_config.f_ch, f_hz, (f_hz - want_f_hz), tx_config.config.bw, tx_config.power_dbm))
+
+	return tx_config
+
+def get_sweep_config(sensor, want_f_hz):
+	global sweep_config
+
+	if sweep_config is None:
+		config_list = sensor.get_config_list()
+		sweep_config = config_list.get_sweep_config(start_hz=want_f_hz, stop_hz=want_f_hz, step_hz=1)
+
+	f_hz = sweep_config.config.ch_to_hz(sweep_config.start_ch)
+
+	log.info("RX: ch=%d f=%d Hz df=%d Hz bw=%d Hz" % (
+			sweep_config.start_ch, f_hz, (f_hz - want_f_hz), sweep_config.config.bw))
+
+	return sweep_config
+
+def measure_rssi(tx_node, rx_node, freq):
+	generator = SignalGenerator(tx_node)
+	tx_config = get_tx_config(generator, freq)
+
+	sensor = SpectrumSensor(rx_node)
+	sweep_config = get_sweep_config(sensor, freq)
+
+	time_start = time.time() + 10
+
+	# rx |           ******************* 
+	# tx |                     *********
+	#    |----------|---------|---------|
+	#    |          |
+	#    now        time_start 
+	#
+
+	generatorp = SignalGeneratorProgram(tx_config, time_start=time_start+5, time_duration=5)
+	generator.program(generatorp)
+
+	sensorp = SpectrumSensorProgram(sweep_config, time_start=time_start, time_duration=10, slot_id=6)
+	sensor.program(sensorp)
+
+	while not sensor.is_complete(sensorp):
+		time.sleep(1)
+
+		if time.time() > (sensorp.time_start + sensorp.time_duration + 60):
+			raise Exception("Something went wrong")
+
+	result = sensor.retrieve(sensorp)
+
+	if LOG_PATH:
+		ts = str(datetime.datetime.fromtimestamp(time_start))
+		ts = ts.replace(" ", "_")
+
+		path = os.path.join(LOG_PATH, "node_from_%d_to_%d_%s.dat" % (
+			generator.alh.addr, sensor.alh.addr, ts))
+		result.write(path)
+
+	data = [ i.data[0] for i in result.sweeps ]
+	return time_start, data
+
+def measure_temp(node):
+	s = node.get("sensor/mcuTemp").strip()
+	g = re.search("MCU temperature is ([0-9.]+) C", s)
+	return float(g.group(1))
+
+def do_measurement(coor, pairs, freq):
+
+	def nf(addr):
+		return alh.ALHProxy(coor, addr)
+
+	for tx_id, rx_id in pairs:
+		try:
+			time_start, data = measure_rssi(nf(tx_id), nf(rx_id), freq)
+
+			tx_temp = measure_temp(nf(tx_id))
+			rx_temp = measure_temp(nf(rx_id))
+
+			clusters, e = kmeans(numpy.array(data), 2)
+			noise, signal = clusters
+			if noise > signal:
+				noise, signal = signal, noise
+
+			log.info("Temperature: TX %.1f C, RX %.1f C" % (tx_temp, rx_temp))
+			log.info("Noise: %.1f dBm Signal: %.1f dBm" % (noise, signal))
+
+			if LOG_PATH:
+				logpath = os.path.join(LOG_PATH, "from_%d_to_%d.log" % (tx_id, rx_id))
+				logf = open(logpath, "a")
+				logf.write("%d\t%f\t%f\t%f\t%f\n" %
+						(time_start, noise, signal, tx_temp, rx_temp))
+				logf.close()
+		except:
+			log.exception("measurement for pair %d, %d failed" % (tx_id, rx_id))
+
+def parse_pair_list(args):
+	pairs = []
+
+	for arg in args:
+		try:
+			nfrom, nto = map(int, arg.split('-'))
+		except ValueError:
+			log.error("Argument not in form <from>-<to>: %s" % (arg,))
+			return None
+
+		pairs.append((nfrom, nto))
+
+	return pairs
+
+def main():
+	global LOG_PATH
+
+	parser = OptionParser(usage="%prog [options]")
+	common.add_communication_options(parser)
+
+	parser.add_option("-l", "--log", dest="log", metavar="PATH",
+			help="Log measurements to PATH")
+	parser.add_option("-f", "--frequency", dest="freq", metavar="HZ", type="int",
+			help="Frequency to do the measurement at")
+
+	(options, args) = parser.parse_args()
+
+	LOG_PATH = options.log
+	if LOG_PATH:
+		logpath = os.path.join(LOG_PATH, "alh-measure-rssi.log")
+		logging.basicConfig(filename=logpath, level=logging.INFO)
+
+	if not options.verbosity or options.verbosity.upper() == "INFO":
+		l = logging.getLogger("vesna.alh")
+		l.setLevel(logging.WARN)
+
+	coor = common.get_coordinator(options)	
+
+	pairs = parse_pair_list(args)
+	if not pairs:
+		log.error("Nothing to do")
+		return
+
+	log.info("process started at %s" % (datetime.datetime.now(),))
+	do_measurement(coor, pairs, options.freq)
+	log.info("process ended at %s" % (datetime.datetime.now(),))
+
+main()
