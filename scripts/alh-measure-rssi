@@ -81,8 +81,11 @@ def measure_rssi(tx_node, rx_node, freq):
 	result = sensor.retrieve(sensorp)
 
 	if LOG_PATH:
+		ts = str(datetime.datetime.fromtimestamp(time_start))
+		ts = ts.replace(" ", "_")
+
 		path = os.path.join(LOG_PATH, "node_from_%d_to_%d_%s.dat" % (
-			generator.alh.addr, sensor.alh.addr, datetime.datetime.fromtimestamp(time_start)))
+			generator.alh.addr, sensor.alh.addr, ts))
 		result.write(path)
 
 	data = [ i.data[0] for i in result.sweeps ]
