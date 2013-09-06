@@ -47,7 +47,7 @@ def main():
 	#
 	# Second example define a sweep starting at 2420 MHz and ending at
 	# 2430 MHz with 400 kHz steps (use with node 17)
-	sweep_config = config_list.get_sweep_config(550e6, 574e6, 2e6)
+	sweep_config = config_list.get_sweep_config(550e6, 574e6, 1e6)
 	#sweep_config = config_list.get_sweep_config(2420e6, 2430e6, 400e3)
 
 	if sweep_config is None:
