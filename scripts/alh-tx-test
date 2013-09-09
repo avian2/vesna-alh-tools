@@ -1,5 +1,6 @@
 #!/usr/bin/python
-from vesna.alh import alh, common
+from vesna import alh
+from vesna.alh import common
 from vesna.alh.signalgenerator import SignalGenerator, SignalGeneratorProgram, TxConfig
 
 from optparse import OptionParser
@@ -37,7 +38,6 @@ def main():
 	for node_id in get_neigbors(coordinator):
 		node = alh.ALHProxy(coordinator, node_id)
 		node.post("prog/firstcall", "1")
-		node.post("prog/runningFirmwareIsValid", "1")
 
 		generator = SignalGenerator(node)
 
