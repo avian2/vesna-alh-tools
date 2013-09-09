@@ -2,6 +2,7 @@
 from vesna import alh
 from vesna.alh import common
 import binascii
+import re
 import serial
 import struct
 import time
@@ -87,6 +88,21 @@ def reboot_firmware(target, slot_id):
 	target.post("prog/setupBootloaderForReprogram", "%d" % (slot_id,))
 	target.post("prog/doRestart", "1")
 
+def check_running_firmware(target, input):
+	g = re.search("node_([a-z]+)_version_([0-9_]+)", input.lower())
+	if g:
+		hello = target.get("hello").lower().split()
+
+		nodetype = 'node' + g.group(1)
+		version = g.group(2).replace("_", ".")
+
+		if nodetype != hello[0]:
+			print "WARNING: node reports node type '%s' but firmware was '%s'" % (
+					nodetype, hello[0])
+		if version != hello[2]:
+			print "WARNING: node reports version '%s' but firmware was '%s'" % (
+					version, hello[2])
+
 def confirm(target):
 	target.post("prog/firstcall", "1")
 	target.post("prog/runningFirmwareIsValid", "1")
@@ -156,6 +172,10 @@ def main():
 		else:
 			print "Waiting for node to boot."
 			time.sleep(60)
+
+		if options.input:
+			check_running_firmware(target, options.input)
+
 
 	confirm(target)
 
