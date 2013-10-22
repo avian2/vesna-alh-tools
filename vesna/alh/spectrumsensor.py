@@ -109,6 +109,7 @@ class SpectrumSensorResult:
 class SpectrumSensor:
 	"""ALH node acting as a spectrum sensor."""
 	MAX_TIME_ERROR = 2.0
+	MAX_SINGLE_SWEEP_TIME = 800e-3
 
 	def __init__(self, alh):
 		"""Create a spectrum sensor based on an ALH implementation.
@@ -117,13 +118,23 @@ class SpectrumSensor:
 		"""
 		self.alh = alh
 
-	def sweep(self, sweep_config):
-		"""Perform a single frequency sweep and return results
-		immediately
+	def _split_sweep_config(self, sweep_config):
 
-		sweep_config -- Frequency sweep configuration to use.
-		"""
+		ch_per_sweep = int(self.MAX_SINGLE_SWEEP_TIME / (sweep_config.config.time * 1e-3))
 
+		sweep_config_list = []
+
+		start_ch = sweep_config.start_ch
+		step_ch = sweep_config.step_ch
+		while start_ch < sweep_config.stop_ch:
+			stop_ch = min(sweep_config.stop_ch, start_ch + ch_per_sweep * step_ch)
+
+			sweep_config_list.append(SweepConfig(sweep_config.config, start_ch, stop_ch, step_ch))
+			start_ch = stop_ch
+
+		return sweep_config_list
+
+	def _sweep(self, sweep_config):
 		response = self.alh.post("sensing/quickSweepBin",
 				"dev %d conf %d ch %d:%d:%d" % (
 				sweep_config.config.device.id,
@@ -149,13 +160,28 @@ class SpectrumSensor:
 
 		assert sweep_config.num_channels * 2 == len(data)
 
-		sweep = Sweep()
-		sweep.timestamp = 0
+		result = []
 		for n in xrange(0, len(data), 2):
 			datum = data[n:n+2]
 
 			dbm = struct.unpack("h", datum)[0]*1e-2
-			sweep.data.append(dbm)
+			result.append(dbm)
+
+		return result
+
+	def sweep(self, sweep_config):
+		"""Perform a single frequency sweep and return results
+		immediately
+
+		sweep_config -- Frequency sweep configuration to use.
+		"""
+
+		sweep = Sweep()
+		sweep.timestamp = 0
+
+		for sweep_config in self._split_sweep_config(sweep_config):
+			data = self._sweep(sweep_config)
+			sweep.data += data
 
 		return sweep
 
