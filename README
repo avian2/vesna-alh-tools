@@ -7,11 +7,15 @@ wireless sensor networks that are using the ALH protocol.
 In a typical setup, VESNA nodes participate in a ZigBee-based wireless mesh
 network. On this mesh network each sensor node exposes a HTTP-like interface,
 supporting two types of requests: GET for state-less information retrieval
-and POST for state-changing actions. In addition to participating in the
-mesh network, the ZigBee network coordinator node also exposes the ALH
-protocol over a TCP/IP SSL tunnel or a serial line. Usually, the tunnel
-terminates in an infrastructure server that performs the translation
-between ALH and a proper HTTP REST interface exposed on the web.
+and POST for state-changing actions.
+
+The ZigBee mesh is established by the coordinator. In addition to a ZigBee
+interface, the coordinator also typically has an Ethernet adapter. At boot it
+establishes a TCP/IP SSL tunnel and exposes an ALH service over it.
+
+Usually, the SSL tunnel terminates in an infrastructure server that performs
+the translation between ALH and a proper HTTP REST interface exposed on the
+web:
 
 +------+
 | node | ALH -  ZigBee mesh
@@ -25,8 +29,23 @@ between ALH and a proper HTTP REST interface exposed on the web.
 | node | ALH -
 +------+
 
-These tools support either talking to the network over the infrastructure's
-HTTP interface or directly to the coordinator over the serial line.
+Alternatively, coordinator can also be directly connected to a client over a
+serial line. This setup is typically used for development or debugging:
+
++------+
+| node | ALH -  ZigBee mesh
++------+      \
+              |                      serial line
++------+      |      +-------------+
+| node | ALH -+- ALH | coordinator | ALH --------------------------------->
++------+      |      +-------------+
+              |
++------+      /
+| node | ALH -
++------+
+
+These tools transparently support both modes of operation. Typically either URL of the
+HTTP REST endpoint is given or a character device for the serial line.
 
 
 Installation
@@ -42,6 +61,10 @@ application. You can get it at:
 https://github.com/sensorlab/vesna-spectrum-sensor
 
 See its own README file for installation instructions.
+
+For communication over the serial line, python-serial package is needed.
+
+$ apt-get install python-serial
 
 
 Usage
@@ -61,7 +84,8 @@ After installation, the following tools are available:
   alh-tx-test   -- Signal generator test.
 
   alh-endpoint-server
-                -- Simple ALH-to-HTTP endpoint server, useful for testing.
+		-- Simple ALH-to-HTTP endpoint server, useful for testing. It
+		   can be used instead of the proper infrastructure server.
 
 
 Run each with "--help" as the only argument to get a list of available
