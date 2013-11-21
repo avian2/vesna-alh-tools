@@ -19,6 +19,7 @@ class RemoteDeviceUnderTest(DeviceUnderTest):
 			options.verbosity = "warning"
 
 		coor = get_coordinator(options)
+		coor.post("prog/firstcall", "1")
 
 		self.node = ALHProxy(coor, options.node)
 		self.node.post("prog/firstcall", "1")
