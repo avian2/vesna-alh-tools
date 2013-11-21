@@ -109,6 +109,30 @@ demos/ directory for examples on how to use them and docstring
 documentation for details.
 
 
+Remote testing with rftest.py
+=============================
+
+This library provides a DeviceUnderTest class that is compatible with the
+RF test utility from vesna-spectrum-sensor repository. It allows for testing of
+radio hardware (e.g. SNE-ISMTV) using the production firmware (e.g.
+NodeSpectrumSensor application) on a fully assembled node with minimal
+additional wiring.
+
+Testing setup looks like this:
+
++----------+ coax +------+ zigbit +-------------+  SSL  +----------------+
+| R&S SMBV |----->| node |<-------| coordinator |<------| infrastructure |
++----------+      +------+  ALH   +-------------+       +----------------+
+      ^                                                           ^
+      | usbtmc    +--------+  HTTPS                               |
+      +-----------| rftest |--------------------------------------+
+                  +--------+
+
+Run rftest like this:
+
+$ vesna-rftest -i foo -R vesna.alh.rftest.RemoteDeviceUnderTest -O,-Uhttps://...,-u...,-n1
+
+
 License
 =======
 
