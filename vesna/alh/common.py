@@ -18,7 +18,7 @@ def get_coordinator(options):
 	if options.url and not options.device:
 		coordinator = alh.ALHWeb(options.url, options.cluster_id)
 	elif options.device and not options.url:
-		f = serial.Serial(options.device, 115200, timeout=120)
+		f = serial.Serial(options.device, 115200, timeout=180)
 		coordinator = alh.ALHTerminal(f)
 	else:
 		raise Exception("Please give either -U or -D option")
