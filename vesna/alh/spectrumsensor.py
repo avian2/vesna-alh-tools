@@ -6,9 +6,11 @@ import struct
 import time
 
 from vesna.spectrumsensor import Device, DeviceConfig, ConfigList, SweepConfig, Sweep
-from vesna.alh import CRCError
+from vesna.alh import CRCError, ALHException
 
 log = logging.getLogger(__name__)
+
+class ALHProgrammingTimeError(ALHException): pass
 
 class SpectrumSensorProgram:
 	"""Describes a single spectrum sensing task."""
@@ -214,7 +216,7 @@ class SpectrumSensor:
 
 		time_error = time_after - time_before
 		if time_error > self.MAX_TIME_ERROR:
-			raise Exception("Programming time error %.1f s > %.1fs" % 
+			raise ALHProgrammingTimeError("Programming time error %.1f s > %.1fs" % 
 					(time_error, self.MAX_TIME_ERROR))
 
 	def is_complete(self, program):
