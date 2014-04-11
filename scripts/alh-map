@@ -108,6 +108,25 @@ mcutemp.label = mcutemp
 		g = re.search("MCU temperature is ([0-9.]+) C", s)
 		return float(g.group(1))
 
+class NodeVCCVoltage(NodeResource):
+	MIN_VERSION = "2.41"
+
+	MUNIN_CONFIG = """graph_title VCC voltage
+graph_args --base 1000
+graph_scale no
+graph_vlabel volts
+graph_category SNC
+vcc.label = vcc
+vcc.min = 0
+"""
+
+	LABEL = "vcc"
+
+	def fetch(self):
+		resp = self.node.alh.get("voltage/vcc").strip()
+		g = re.match("^([0-9]+) mV\s*$", resp)
+		return float(g.group(1)) * 1e-3
+
 class NodeFirmwareVersion(NodeResource):
 	LABEL = "version"
 
@@ -191,6 +210,7 @@ class MonitoredNode:
 		NodePingTime,
 		NodeUptime,
 		NodeMCUTemperature,
+		NodeVCCVoltage,
 		NodeRadioStatistics,
 		NodeFritzBoxUptime ]
 
