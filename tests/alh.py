@@ -1,6 +1,63 @@
 import unittest
 
+from vesna.alh import CRCError
 from vesna.alh import signalgenerator
+
+class TestSignalGenerator(unittest.TestCase):
+
+	def test_get_config_list(self):
+
+		class TestALH:
+			def get(self, resource):
+				return "dev #0, Test, 1 configs:\n" \
+					"  cfg #0: Test:\n" \
+					"     base: 10 Hz, spacing: 1 Hz, bw: 1 Hz, channels: 10, min power: -10 dBm, max power: 0 dBm, time: 1 ms"
+
+		alh = TestALH()
+		s = signalgenerator.SignalGenerator(alh)
+
+		cl = s.get_config_list()
+
+		self.assertEquals(len(cl.devices), 1)
+		self.assertEquals(len(cl.configs), 1)
+
+	def test_get_config_list_corrupt_1(self):
+
+		class TestALH:
+			def get(self, resource):
+				return ""
+
+		alh = TestALH()
+		s = signalgenerator.SignalGenerator(alh)
+
+		cl = s.get_config_list()
+
+		self.assertEquals(cl.configs, [])
+		self.assertEquals(cl.devices, [])
+
+	def test_get_config_list_corrupt_2(self):
+
+		class TestALH:
+			def get(self, resource):
+				return "dev #0, Test, 2 configs:"
+
+		alh = TestALH()
+		s = signalgenerator.SignalGenerator(alh)
+
+		self.assertRaises(CRCError, s.get_config_list)
+
+	def test_get_config_list_corrupt_3(self):
+
+		class TestALH:
+			def get(self, resource):
+				return "dev #0, Test, 1 configs:\n"\
+					"  cfg #0: Test:"
+
+		alh = TestALH()
+		s = signalgenerator.SignalGenerator(alh)
+
+		self.assertRaises(CRCError, s.get_config_list)
+
 
 class TestGeneratorConfigList(unittest.TestCase):
 	def test_get_config_name(self):
@@ -36,8 +93,63 @@ class TestGeneratorConfigList(unittest.TestCase):
 		sc = cl.get_tx_config(2500, 0, name="bar")
 		self.assertEquals(3, sc.config.id)
 
-from vesna.alh.spectrumsensor import SpectrumSensorResult, SpectrumSensorProgram
+from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorResult, SpectrumSensorProgram
 from vesna.spectrumsensor import Device, DeviceConfig, SweepConfig, Sweep
+
+class TestSpectrumSensor(unittest.TestCase):
+
+	def test_get_config_list(self):
+
+		class TestALH:
+			def get(self, resource):
+				return "dev #0, Test, 1 configs:\n" \
+					"  cfg #0: Test:\n" \
+					"     base: 10 Hz, spacing: 1 Hz, bw: 1 Hz, channels: 10, time: 1 ms"
+
+		alh = TestALH()
+		s = SpectrumSensor(alh)
+
+		cl = s.get_config_list()
+
+		self.assertEquals(len(cl.devices), 1)
+		self.assertEquals(len(cl.configs), 1)
+
+	def test_get_config_list_corrupt_1(self):
+
+		class TestALH:
+			def get(self, resource):
+				return ""
+
+		alh = TestALH()
+		s = SpectrumSensor(alh)
+
+		cl = s.get_config_list()
+
+		self.assertEquals(cl.configs, [])
+		self.assertEquals(cl.devices, [])
+
+	def test_get_config_list_corrupt_2(self):
+
+		class TestALH:
+			def get(self, resource):
+				return "dev #0, Test, 2 configs:"
+
+		alh = TestALH()
+		s = SpectrumSensor(alh)
+
+		self.assertRaises(CRCError, s.get_config_list)
+
+	def test_get_config_list_corrupt_3(self):
+
+		class TestALH:
+			def get(self, resource):
+				return "dev #0, Test, 1 configs:\n"\
+					"  cfg #0: Test:"
+
+		alh = TestALH()
+		s = SpectrumSensor(alh)
+
+		self.assertRaises(CRCError, s.get_config_list)
 
 class TestSpectrumSensorResult(unittest.TestCase):
 	def setUp(self):

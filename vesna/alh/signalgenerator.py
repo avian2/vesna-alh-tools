@@ -2,6 +2,8 @@ import itertools
 import re
 import time
 
+from vesna.alh import CRCError
+
 class Device:
 	"""A signal generation device.
 
@@ -222,21 +224,26 @@ class SignalGenerator:
 		config = None
 
 		description = self.alh.get("generator/deviceConfigList")
+		configs_left = 0
+		state = 0
 		for line in description.split("\n"):
-			g = re.match("dev #([0-9]+), (.+), [0-9]+ configs:", line)
-			if g:
+			g = re.match("dev #([0-9]+), (.+), ([0-9]+) configs:", line)
+			if state == 0 and g:
 				device = Device(int(g.group(1)), g.group(2))
 				config_list._add_device(device)
+				configs_left = int(g.group(3))
+				state = 1
 				continue
 
 			g = re.match("  cfg #([0-9]+): (.+):", line)
-			if g:
+			if state == 1 and g:
 				config = DeviceConfig(int(g.group(1)), g.group(2), device)
-				config_list._add_config(config)
+				state = 2
+
 				continue
 
 			g = re.match("     base: ([0-9]+) Hz, spacing: ([0-9]+) Hz, bw: ([0-9]+) Hz, channels: ([0-9]+), min power: ([0-9-]+) dBm, max power: ([0-9-]+) dBm, time: ([0-9]+) ms", line)
-			if g:
+			if state == 2 and g:
 				config.base = int(g.group(1))
 				config.spacing = int(g.group(2))
 				config.bw = int(g.group(3))
@@ -244,6 +251,20 @@ class SignalGenerator:
 				config.min_power = int(g.group(5))
 				config.max_power = int(g.group(6))
 				config.time = int(g.group(7))
+
+				config_list._add_config(config)
+
+				configs_left -= 1
+				if configs_left < 0:
+					raise CRCError
+				elif configs_left == 0:
+					state = 0
+				else:
+					state = 1
+
 				continue
+
+		if configs_left != 0:
+			raise CRCError
 
 		return config_list
