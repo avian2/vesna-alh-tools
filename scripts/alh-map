@@ -151,31 +151,31 @@ class NodeTDAStatus(NodeResource):
 
 	LABEL = "tda"
 
-	MUNIN_CONFIG = """multigraph temp
+	MUNIN_CONFIG = """multigraph tdatemp
 graph_title Tuner temperature
 graph_args --base 1000
 graph_scale no
 graph_vlabel degrees Celsius
 graph_category SNE
-temp.label = temp
+tdatemp.label = tdatemp
 
-multigraph errors
+multigraph tdaerrors
 graph_title Tuner bus errors
 graph_args --base 1000
 graph_vlabel bus errors per second
 graph_category SNE
-errors.label errors
-errors.type DERIVE
-errors.min 0
+tdaerrors.label tdaerrors
+tdaerrors.type DERIVE
+tdaerrors.min 0
 
-multigraph timeouts
+multigraph tdatimeouts
 graph_title Tuner timeouts
 graph_args --base 1000
 graph_vlabel timeouts per second
 graph_category SNE
-timeouts.label timeouts
-timeouts.type DERIVE
-timeouts.min 0
+tdatimeouts.label tdatimeouts
+tdatimeouts.type DERIVE
+tdatimeouts.min 0
 """
 
 	def fetch(self):
@@ -193,12 +193,12 @@ timeouts.min 0
 		return (temp, errors, timeouts)
 
 	def munin_write(self, outf):
-		outf.write("""multigraph temp
-temp.value %s
-multigraph errors
-errors.value %s
-multigraph timeouts
-timeouts.value %s
+		outf.write("""multigraph tdatemp
+tdatemp.value %s
+multigraph tdaerrors
+tdaerrors.value %s
+multigraph tdatimeouts
+tdatimeouts.value %s
 """ % (self.get()[0], self.get()[1], self.get()[2]))
 
 class NodeRadioStatistics(NodeResource):
