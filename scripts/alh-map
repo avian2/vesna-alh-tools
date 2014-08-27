@@ -489,7 +489,10 @@ def main():
 					outf.write("n%d -> n%d\n" % (current_id, next_id))
 		outf.write("}\n")
 	elif options.do_munin:
-		do_munin(options, visited)
+		if not options.output:
+			log.error("Please specify Munin data directory with --output")
+		else:
+			do_munin(options, visited)
 	else:
 		do_stats(options, visited)
 
