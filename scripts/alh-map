@@ -52,8 +52,8 @@ graph_args --base 1000 -l 0
 graph_scale no
 graph_vlabel uptime in hours
 graph_category SNE
-fbuptime.label = uptime
-fbuptime.min = 0
+fbuptime.label uptime
+fbuptime.min 0
 """
 
 	LABEL = "fbuptime"
@@ -68,8 +68,8 @@ graph_args --base 1000 -l 0
 graph_scale no
 graph_vlabel uptime in days
 graph_category SNC
-uptime.label = uptime
-uptime.min = 0
+uptime.label uptime
+uptime.min 0
 """
 
 	LABEL = "uptime"
@@ -98,7 +98,7 @@ graph_args --base 1000
 graph_scale no
 graph_vlabel degrees Celsius
 graph_category SNC
-mcutemp.label = mcutemp
+mcutemp.label mcutemp
 """
 
 	LABEL = "mcutemp"
@@ -116,8 +116,8 @@ graph_args --base 1000
 graph_scale no
 graph_vlabel volts
 graph_category SNC
-vcc.label = vcc
-vcc.min = 0
+vcc.label vcc
+vcc.min 0
 """
 
 	LABEL = "vcc"
@@ -133,7 +133,7 @@ class NodeZigBitFlashCRC(NodeResource):
 	MUNIN_CONFIG = """graph_title ZigBit Flash 0x11100 - 0x11200 CRC32
 graph_vlabel CRC32
 graph_category SNR
-crc.label = CRC32
+crc.label CRC32
 """
 
 	LABEL = "zbcrc"
@@ -159,7 +159,7 @@ class NodePingTime(NodeResource):
 graph_args --base 1000
 graph_vlabel seconds
 graph_category SNR
-ping.label = ping
+ping.label ping
 """
 
 	LABEL = "ping"
@@ -178,7 +178,7 @@ graph_args --base 1000
 graph_scale no
 graph_vlabel degrees Celsius
 graph_category SNE
-tdatemp.label = tdatemp
+tdatemp.label tdatemp
 
 multigraph tdaerrors
 graph_title Tuner bus errors
