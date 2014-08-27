@@ -133,7 +133,7 @@ class NodeZigBitFlashCRC(NodeResource):
 	MUNIN_CONFIG = """graph_title ZigBit Flash 0x11100 - 0x11200 CRC32
 graph_vlabel CRC32
 graph_category SNR
-crc.label CRC32
+zbcrc.label CRC32
 """
 
 	LABEL = "zbcrc"
