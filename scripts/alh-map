@@ -127,6 +127,27 @@ vcc.min = 0
 		g = re.match("^([0-9]+) mV\s*$", resp)
 		return float(g.group(1)) * 1e-3
 
+class NodeZigBitFlashCRC(NodeResource):
+	MIN_VERSION = "2.43"
+
+	MUNIN_CONFIG = """graph_title ZigBit Flash 0x11100 - 0x11200 CRC32
+graph_vlabel CRC32
+graph_category SNR
+crc.label = CRC32
+"""
+
+	LABEL = "zbcrc"
+
+	def fetch(self):
+		start = 0x11100
+		end   = 0x11200
+
+		resp = self.node.alh.get("debug/zigbitflashcrc",
+				"start=%d&end=%d" % (start, end))
+		crc32 = int(resp, 16)
+
+		return crc32
+
 class NodeFirmwareVersion(NodeResource):
 	LABEL = "version"
 
@@ -268,7 +289,8 @@ class MonitoredNode:
 		NodeVCCVoltage,
 		NodeRadioStatistics,
 		NodeTDAStatus,
-		NodeFritzBoxUptime ]
+		NodeFritzBoxUptime,
+		NodeZigBitFlashCRC ]
 
 	def __init__(self, alh):
 		self.alh = alh
