@@ -1,31 +1,6 @@
 #!/usr/bin/python
 
-from distutils.core import Command, setup
-import unittest
-
-UNITTESTS = [
-		"cdf",
-		"alh",
-	]
-
-class TestCommand(Command):
-	user_options = [ ]
-
-	def initialize_options(self):
-		pass
-
-	def finalize_options(self):
-		pass
-
-	def run(self):
-		suite = unittest.TestSuite()
-
-		suite.addTests(
-			unittest.defaultTestLoader.loadTestsFromNames(
-				"tests." + test for test in UNITTESTS) )
-
-		result = unittest.TextTestRunner(verbosity=2).run(suite)
-
+from setuptools import setup
 
 setup(name='vesna-alhtools',
       version='0.1',
@@ -35,7 +10,10 @@ setup(name='vesna-alhtools',
       author='Tomaz Solc',
       author_email='tomaz.solc@tablix.org',
 
-      packages = [ 'vesna/alh', 'vesna/cdf' ],
+      packages = [ 'vesna', 'vesna.alh', 'vesna.cdf' ],
+
+      namespace_packages = [ 'vesna' ],
+
       scripts = [ 'scripts/alh-reprogram',
 	      'scripts/alh-map',
 	      'scripts/alh-tx-test',
@@ -45,5 +23,5 @@ setup(name='vesna-alhtools',
       requires = [ 'vesna' ],
       provides = [ 'vesna.alh', 'vesna.cdf' ],
 
-      cmdclass = { 'test': TestCommand },
+      test_suite = 'tests',
 )
