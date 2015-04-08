@@ -8,11 +8,6 @@ import time
 import urllib
 import ssl
 
-SETTINGS_PATHS = [
-		'alhrc',
-		os.path.join(os.environ['HOME'], '.alhrc'),
-	]
-
 log = logging.getLogger(__name__)
 
 class ALHException(Exception): pass
@@ -47,7 +42,17 @@ class ALHURLOpener(urllib.FancyURLopener):
 		urllib.FancyURLopener.__init__(self, context=context)
 
 	def prompt_user_passwd(self, host, realm):
-		for path in SETTINGS_PATHS:
+
+		paths = [
+				'alhrc',
+				'/etc/alhrc',
+			]
+
+		home = os.environ.get('HOME')
+		if home is not None:
+			paths.append(os.path.join(home, '.alhrc'))
+
+		for path in paths:
 			try:
 				f = open(path)
 			except IOError:
