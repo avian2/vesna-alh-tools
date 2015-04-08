@@ -6,6 +6,7 @@ import string
 import sys
 import time
 import urllib
+import ssl
 
 SETTINGS_PATHS = [
 		'alhrc',
@@ -36,6 +37,14 @@ class TerminalError(IOError): pass
 
 class ALHURLOpener(urllib.FancyURLopener):
 	version = "vesna-alh-tools/1.0"
+
+	def __init__(self):
+		try:
+			context = ssl._create_unverified_context()
+		except AttributeError:
+			context = None
+
+		urllib.FancyURLopener.__init__(self, context=context)
 
 	def prompt_user_passwd(self, host, realm):
 		for path in SETTINGS_PATHS:
