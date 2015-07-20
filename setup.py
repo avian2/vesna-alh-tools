@@ -27,5 +27,5 @@ setup(name='vesna-alhtools',
 
       requires = [ 'vesna' ],
 
-      test_suite = 'tests',
+      test_suite = 'test',
 )
