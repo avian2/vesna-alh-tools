@@ -1,3 +1,5 @@
+.. vim:sw=3 ts=3 expandtab tw=78
+
 Introduction
 ============
 
@@ -15,34 +17,34 @@ establishes a TCP/IP SSL tunnel and exposes an ALH service over it.
 
 Usually, the SSL tunnel terminates in an infrastructure server that performs
 the translation between ALH and a proper HTTP REST interface exposed on the
-web:
+web::
 
-+------+
-| node | ALH -  ZigBee mesh
-+------+      \
-              |                      SSL tunnel
-+------+      |      +-------------+            +----------------+
-| node | ALH -+- ALH | coordinator | ALH ------ | infrastructure | HTTPS -->
-+------+      |      +-------------+            +----------------+
-              |
-+------+      /
-| node | ALH -
-+------+
+   +------+
+   | node | ALH -  ZigBee mesh
+   +------+      \
+                 |                    SSL tunnel
+   +------+      |      +-------------+         +----------------+
+   | node | ALH -+- ALH | coordinator | ALH --- | infrastructure | HTTPS -->
+   +------+      |      +-------------+         +----------------+
+                 |
+   +------+      /
+   | node | ALH -
+   +------+
 
 Alternatively, coordinator can also be directly connected to a client over a
-serial line. This setup is typically used for development or debugging:
+serial line. This setup is typically used for development or debugging::
 
-+------+
-| node | ALH -  ZigBee mesh
-+------+      \
-              |                      serial line
-+------+      |      +-------------+
-| node | ALH -+- ALH | coordinator | ALH --------------------------------->
-+------+      |      +-------------+
-              |
-+------+      /
-| node | ALH -
-+------+
+   +------+
+   | node | ALH -  ZigBee mesh
+   +------+      \
+                 |                      serial line
+   +------+      |      +-------------+
+   | node | ALH -+- ALH | coordinator | ALH ------------------------------->
+   +------+      |      +-------------+
+                 |
+   +------+      /
+   | node | ALH -
+   +------+
 
 These tools transparently support both modes of operation. Typically either URL of the
 HTTP REST endpoint is given or a character device for the serial line.
@@ -51,9 +53,9 @@ HTTP REST endpoint is given or a character device for the serial line.
 Installation
 ============
 
-To install system-wide, run:
+To install system-wide, run::
 
-$ python setup.py install
+   $ python setup.py install
 
 You also need to install Python bindings for VESNA spectrum sensor
 application. You can get it at:
@@ -62,9 +64,9 @@ https://github.com/sensorlab/vesna-spectrum-sensor
 
 See its own README file for installation instructions.
 
-For communication over the serial line, python-serial package is needed.
+For communication over the serial line, python-serial package is needed::
 
-$ apt-get install python-serial
+   $ apt-get install python-serial
 
 
 Usage
@@ -72,37 +74,38 @@ Usage
 
 After installation, the following tools are available:
 
-  alh-reprogram -- Perform over-the-air reprogramming of the coordinator or
-                   sensor nodes.
+``alh-reprogram``
+   Perform over-the-air reprogramming of the coordinator or sensor nodes.
 
-  alh-map       -- Enumerate all the nodes participating in the sensor
-                   network by crawling the ZigBee mesh.
+``alh-map``
+   Enumerate all the nodes participating in the sensor network by crawling the
+   ZigBee mesh.
 
-		   Can be used for visualizing the network using Graphviz
-		   or network monitoring (via integration into Munin).
+   Can be used for visualizing the network using Graphviz or network
+   monitoring (via integration into Munin).
 
-  alh-tx-test   -- Signal generator test.
+``alh-tx-test``
+   Signal generator test.
 
-  alh-endpoint-server
-		-- Simple ALH-to-HTTP endpoint server, useful for testing. It
-		   can be used instead of the proper infrastructure server.
+``alh-endpoint-server``
+   Simple ALH-to-HTTP endpoint server, useful for testing. It can be used
+   instead of the proper infrastructure server.
 
 
-Run each with "--help" as the only argument to get a list of available
+Run each with ``--help`` as the only argument to get a list of available
 options.
 
 Note: if the API end-point is using basic authentication, you will be
 prompted for credentials on the command line.
 
-You can also save credentials into either a file named ".alhrc" in your
-home directory or "alhrc" in the current directory. Format of the file is
-as in the following example:
+You can also save credentials into either a file named ``.alhrc`` in your
+home directory or ``alhrc`` in the current directory. Format of the file is
+as in the following example::
 
-Host example.com
-User <username>
-Password <password>
-# more Host, User, Password lines can follow
-
+   Host example.com
+   User <username>
+   Password <password>
+   # more Host, User, Password lines can follow
 
 Several Python modules are installed as well. Refer to demo programs in the
 demos/ directory for examples on how to use them and docstring
@@ -118,25 +121,25 @@ radio hardware (e.g. SNE-ISMTV) using the production firmware (e.g.
 NodeSpectrumSensor application) on a fully assembled node with minimal
 additional wiring.
 
-Testing setup looks like this:
+Testing setup looks like this::
 
-+----------+ coax +------+ zigbit +-------------+  SSL  +----------------+
-| R&S SMBV |----->| node |<-------| coordinator |<------| infrastructure |
-+----------+      +------+  ALH   +-------------+       +----------------+
-      ^                                                           ^
-      | usbtmc    +--------+  HTTPS                               |
-      +-----------| rftest |--------------------------------------+
-                  +--------+
+   +----------+ coax +------+ zigbit +-------------+  SSL  +----------------+
+   | R&S SMBV |----->| node |<-------| coordinator |<------| infrastructure |
+   +----------+      +------+  ALH   +-------------+       +----------------+
+         ^                                                           ^
+         | usbtmc    +--------+  HTTPS                               |
+         +-----------| rftest |--------------------------------------+
+                     +--------+
 
-Run rftest like this:
+Run rftest like this::
 
-$ vesna-rftest -i foo -R vesna.alh.rftest.RemoteDeviceUnderTest -O,-Uhttps://...,-u...,-n1
+   $ vesna-rftest -i foo -R vesna.alh.rftest.RemoteDeviceUnderTest -O,-Uhttps://...,-u...,-n1
 
 
 License
 =======
 
-Copyright (C) 2013 SensorLab, Jozef Stefan Institute
+Copyright (C) 2015 SensorLab, Jozef Stefan Institute
 http://sensorlab.ijs.si
 
 This program is free software: you can redistribute it and/or modify
