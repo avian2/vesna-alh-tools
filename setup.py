@@ -7,7 +7,7 @@ def get_long_description():
 	return open(os.path.join(os.path.dirname(__file__), "README.rst")).read()
 
 setup(name='vesna-alhtools',
-      version='1.0.0',
+      version='1.0.1',
       description='Tools for talking the VESNA almost-like-HTTP protocol',
       license='GPL',
       long_description=get_long_description(),
