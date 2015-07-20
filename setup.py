@@ -12,7 +12,7 @@ setup(name='vesna-alhtools',
       license='GPL',
       long_description=get_long_description(),
       author='Tomaz Solc',
-      author_email='tomaz.solc@tablix.org',
+      author_email='tomaz.solc@ijs.si',
       url='https://github.com/avian2/vesna-alh-tools',
 
       packages = [ 'vesna', 'vesna.alh', 'vesna.cdf' ],
