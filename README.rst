@@ -55,18 +55,11 @@ Installation
 
 To install system-wide, run::
 
-   $ python setup.py install
+   $ pip install .
 
-You also need to install Python bindings for VESNA spectrum sensor
-application. You can get it at:
-
-https://github.com/sensorlab/vesna-spectrum-sensor
-
-See its own README file for installation instructions.
-
-For communication over the serial line, python-serial package is needed::
-
-   $ apt-get install python-serial
+This should also automatically install the required Python bindings for VESNA
+spectrum sensor application. More information about it is at:
+https://github.com/avian2/vesna-spectrum-sensor
 
 
 Usage
