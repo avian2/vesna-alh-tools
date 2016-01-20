@@ -101,8 +101,9 @@ as in the following example::
    # more Host, User, Password lines can follow
 
 Several Python modules are installed as well. Refer to demo programs in the
-demos/ directory for examples on how to use them and docstring
-documentation for details.
+demos/ directory for examples on how to use them. Classes and methods are
+documented with docstring documentation. Some of it is accessible on-line
+at https://vesna-alh-tools.readthedocs.org/en/latest/
 
 
 Remote testing with rftest.py
