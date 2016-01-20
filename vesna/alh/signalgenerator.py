@@ -23,7 +23,7 @@ class DeviceConfig:
 	"""Configuration for a signal generation device.
 
 	The set of possible configurations for a device is usually hardware-dependent (i.e. a
-	configuration usually reflects physical hardware settings) A configuration defines the usable
+	configuration usually reflects physical hardware settings). A configuration defines the usable
 	frequency and power range.
 	"""
 	def __init__(self, id, name, device):
@@ -55,8 +55,8 @@ class DeviceConfig:
 	def covers(self, f_hz, power_dbm):
 		"""Return true if this configuration can support the given frequency and power.
 
-		f_hz -- transmission frequency in hertz.
-		power_dbm -- transmission power in dBm.
+		:param f_hz: transmission frequency in hertz
+		:param power_dbm: transmission power in dBm
 		"""
 		return f_hz >= self.get_start_hz() and f_hz <= self.get_stop_hz() and \
 				power_dbm >= self.min_power and power_dbm <= self.max_power
@@ -64,8 +64,8 @@ class DeviceConfig:
 	def get_tx_config(self, f_hz, power_dbm):
 		"""Return the transmission configuration for the given frequency and power.
 
-		f_hz -- transmission frequency in hertz.
-		power_dbm -- transmission power in dBm.
+		:param f_hz: transmission frequency in hertz
+		:param power_dbm: transmission power in dBm
 		"""
 		assert self.covers(f_hz, power_dbm)
 
@@ -78,15 +78,14 @@ class DeviceConfig:
 				self.device.id, self.id, self.get_start_hz(), self.get_stop_hz())
 
 class TxConfig:
-	"""Transmission configuration for a signal generation device."""
+	"""Transmission configuration for a signal generation device.
+
+	:param config: :py:class:`DeviceConfig` device configuration object to use
+	:param f_ch: frequency channel for transmission
+	:param power_db: power level for transmission
+	"""
 
 	def __init__(self, config, f_ch, power_dbm):
-		"""Create a new transmission configuration.
-
-		config -- Device configuration object to use.
-		f_ch -- Frequency channel for transmission.
-		power_db -- Power level for transmission.
-		"""
 		assert f_ch >= 0
 		assert f_ch < config.num
 		assert power_dbm >= config.min_power
@@ -113,8 +112,8 @@ class ConfigList:
 	def get_config(self, device_id, config_id):
 		"""Return the specified device configuration.
 
-		device_id -- numeric device id, as returned by the "list" command.
-		config_id -- numeric configuration id, as returned by the "list" command.
+		:param device_id: numeric device id, as returned by the `list` command
+		:param config_id: numeric configuration id, as returned by the `list` command
 		"""
 		for config in self.configs:
 			if config.id == config_id and config.device.id == device_id:
@@ -125,9 +124,9 @@ class ConfigList:
 	def get_tx_config(self, f_hz, power_dbm, name=None):
 		"""Return best transmission configuration for specified requirements.
 
-		f_hz -- Transmission frequency.
-		power_dbm -- Transmission power.
-		name -- Optional required sub-string in device configuration name.
+		:param f_hz: transmission frequency
+		:param power_dbm: transmission power
+		:param name: optional required sub-string in device configuration name
 		"""
 
 		candidates = []
@@ -166,41 +165,39 @@ class ConfigList:
 		return '\n'.join(lines)
 
 class SignalGeneratorProgram:
-	"""Describes a single signal generation task."""
+	"""Describes a single signal generation task.
+
+	:param tx_config: transmission configuration to use
+	:param time_start: time to start the task (UNIX timestamp)
+	:param time_duration: duration of the task in seconds
+	"""
 
 	def __init__(self, tx_config, time_start, time_duration):
-		"""Create a new signal generation task.
-
-		tx_config -- Transmission configuration to use.
-		time_start -- Time to start the task (UNIX timestamp)
-		time_duration -- Duration of the task in seconds.
-		"""
 		self.tx_config = tx_config
 		self.time_start = time_start
 		self.time_duration = time_duration
 
 class SignalGenerator:
-	"""ALH node acting as a signal generator."""
+	"""ALH node acting as a signal generator.
+
+	:param alh: ALH implementation used to communicate with the node
+	"""
 	MAX_TIME_ERROR = 2.0
 
 	def __init__(self, alh):
-		"""Create a signal generator based on an ALH implementation.
-
-		alh -- ALH implementation used to communicate with the node
-		"""
 		self.alh = alh
 
 	def program(self, program):
 		"""Send the given signal generation program to the node.
 
-		program -- SignalGeneratorProgram object
+		:param program: a :py:class:`SignalGeneratorProgram` object
 		"""
 		return self.program_list([program])
 
 	def program_list(self, program_list):
 		"""Send several signal generator programs to the node.
 
-		program_list -- List of SignalGeneratorProgram objects.
+		:param program_list: a list of :py:class:`SignalGeneratorProgram` objects
 		"""
 		time_before = time.time()
 
@@ -232,7 +229,7 @@ class SignalGenerator:
 	def get_config_list(self):
 		"""Query and return the list of supported device configurations.
 
-		Returns a ConfigList object.
+		:return: a :py:class:`ConfigList` object
 		"""
 		config_list = ConfigList()
 

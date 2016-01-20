@@ -10,7 +10,10 @@ import ssl
 
 log = logging.getLogger(__name__)
 
-class ALHException(Exception): pass
+class ALHException(Exception):
+	"""Base class for errors related to the ALH protocol
+	"""
+	pass
 
 class ALHProtocolException(ALHException):
 	def __init__(self, msg):
@@ -99,23 +102,25 @@ class ALHProtocol:
 	def get(self, resource, *args):
 		"""Issue a GET request to the service.
 
-		Returns the string reply from the resource handler or raises an
-		ALHException in case of an error.
+		Raises an ALHException in case of an error.
 
-		resource -- resource to issue request to
-		args -- arbitrary string arguments for the request.
+		:param resource: resource to issue request to
+		:param args: arbitrary string arguments for the request
+
+		:return: the string reply from the resource handler
 		"""
 		return self._get(resource, *args)
 
 	def post(self, resource, data, *args):
 		"""Issue a POST request to the service
 
-		Returns the string reply from the resource handler or raises an
-		ALHException in case of an error.
+		Raises an ALHException in case of an error.
 
-		resource -- resource to issue request to
-		data -- POST data to attach to the request
-		args -- arbitrary string arguments for the request
+		:param resource: resource to issue request to
+		:param data: POST data to attach to the request
+		:param args: arbitrary string arguments for the request
+
+		:return: the string reply from the resource handler
 		"""
 		return self._post(resource, data, *args)
 
@@ -156,14 +161,16 @@ class ALHProtocol:
 
 
 class ALHTerminal(ALHProtocol):
-	"""ALH protocol implementation through a serial terminal."""
+	"""ALH protocol implementation through a serial terminal.
+
+	This implementation is used for testing and debugging when a sensor
+	node is connected directly to a computer over a serial line.
+
+	:param f: path to the character device of the terminal
+	"""
 	RESPONSE_TERMINATOR = "\r\nOK\r\n"
 
 	def __init__(self, f):
-		"""Create a new ALHTerminal object.
-
-		f -- Path to the character device of the terminal
-		"""
 		self.f = f
 
 	def _send(self, data):
@@ -219,26 +226,27 @@ class ALHTerminal(ALHProtocol):
 		return self._send_with_retry(req)
 
 class ALHWeb(ALHProtocol):
-	"""ALH protocol implementation through the HTTP infrastructure server."""
+	"""ALH protocol implementation through the HTTP infrastructure server.
+
+	ALHWeb is typically used to access the coordinator of a ZigBee mesh network.
+
+	If the API end-point is using basic authentication, you will be
+	prompted for credentials on the command line.
+
+	You can also save credentials into either a file named `.alhrc` in your
+	home directory or `alhrc` in the current directory. Format of the file
+	is as in the following example::
+
+	    Host example.com
+	    User <username>
+	    Password <password>
+	    # more Host, User, Password lines can follow
+
+	:param base_url: base URL of the HTTP API (e.g. `https://crn.log-a-tec.eu/communicator`)
+	:param cluster_id: numerical cluster id
+	"""
 
 	def __init__(self, base_url, cluster_id):
-		"""Create a new ALHWeb object.
-
-		Note: if the API end-point is using basic authentication, you will be
-		prompted for credentials on the command line.
-
-		You can also save credentials into either a file named ".alhrc" in your home
-		directory or "alhrc" in the current directory. Format of the file is as in
-		the following example:
-
-		Host example.com
-		User <username>
-		Password <password>
-		# more Host, User, Password lines can follow
-
-		base_url -- Base URL of the HTTP API (e.g. https://crn.log-a-tec.eu/communicator)
-		cluster_id -- Numerical cluster id
-		"""
 		self.base_url = base_url
 		self.cluster_id = cluster_id
 
@@ -306,15 +314,13 @@ class ALHProxy(ALHProtocol):
 	This implementation forwards arbitrary ALH requests through the "nodes"
 	resource on an ALH service used as a proxy.
 
-	Proxy is typically used to access nodes on the ZigBee mesh network behind
+	ALHProxy is typically used to access nodes on the ZigBee mesh network behind
 	the coordinator.
+
+	:param alhproxy: ALH implementation used as a proxy
+	:param addr: ZigBee address of the node to forward requests to
 	"""
 	def __init__(self, alhproxy, addr):
-		"""Create a new ALHProxy object.
-
-		alhproxy -- ALH implementation used as a proxy
-		addr -- ZigBee address of the node to forward requests to
-		"""
 		self.alhproxy = alhproxy
 		self.addr = addr
 
