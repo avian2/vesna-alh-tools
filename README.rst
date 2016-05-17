@@ -103,7 +103,7 @@ as in the following example::
 Several Python modules are installed as well. Refer to demo programs in the
 demos/ directory for examples on how to use them. Classes and methods are
 documented with docstring documentation. Some of it is accessible on-line
-at https://vesna-alh-tools.readthedocs.org/en/latest/
+at https://vesna-alh-tools.readthedocs.io/en/latest/
 
 
 Remote testing with rftest.py
