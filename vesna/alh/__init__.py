@@ -243,7 +243,7 @@ class ALHWeb(ALHProtocol):
 	    # more Host, User, Password lines can follow
 
 	:param base_url: base URL of the HTTP API (e.g. `https://crn.log-a-tec.eu/communicator`)
-	:param cluster_id: numerical cluster id
+	:param cluster_id: cluster id
 	"""
 
 	def __init__(self, base_url, cluster_id):

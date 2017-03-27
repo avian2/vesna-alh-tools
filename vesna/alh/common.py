@@ -6,7 +6,7 @@ import sys
 def add_communication_options(parser):
 	parser.add_option("-U", "--url", dest="url", metavar="URL",
 			help="Use URL for communication with coordinator")
-	parser.add_option("-u", "--cluster", dest="cluster_id", metavar="ID", type="int",
+	parser.add_option("-u", "--cluster", dest="cluster_id", metavar="ID",
 			help="Cluster ID to pass to the web API")
 
 	parser.add_option("-D", "--device", dest="device", metavar="PATH",
