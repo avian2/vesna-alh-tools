@@ -5,7 +5,6 @@
 # the vesna.alh.spectrumsensor module.
 
 import logging
-import time
 from vesna import alh
 
 from vesna.alh.spectrumsensor import SpectrumSensor
@@ -77,6 +76,6 @@ def main():
 		pyplot.axis([min(f_mhz), max(f_mhz), -110, -50])
 		pyplot.draw()
 
-		time.sleep(1)
+		pyplot.pause(1)
 
 main()
