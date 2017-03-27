@@ -14,34 +14,17 @@ def main():
 	# background.
 	logging.basicConfig(level=logging.INFO)
 
-	coor = alh.ALHWeb("https://crn.log-a-tec.eu/communicator", 10001)
-
-	# Nodes 16 and 17 are equipped with an 2.4 GHz tranceiver (CC2500 on
-	# SNE-ISMTV-24) that is capable of transmitting and receiving on the
-	# 2.4 GHz ISM band.
-	node16 = alh.ALHProxy(coor, 16) 
-	node17 = alh.ALHProxy(coor, 17)
-
-	# We will use node 16 as a signal generator. We wrap its ALHProxy
-	# object with a SignalGenerator object for convenience.
-	generator = SignalGenerator(node16)
-	
-	# Set up a transmission configuration for 2.425 GHz and 0 dBm
-	generator_config_list = generator.get_config_list()
-
-	tx_config = generator_config_list.get_tx_config(2425e6, 0)
-	if tx_config is None:
-		raise Exception("Node can not scan specified frequency range.")
+	node = alh.ALHWeb("http://193.2.205.189:9000/communicator", "/dev/ttyS1")
 
 	# We will use node 17 as a spectrum sensor. Again, we wrap it with a
 	# SpectrumSensor object for convenience.
-	sensor = SpectrumSensor(node17)
+	sensor = SpectrumSensor(node)
 
 	# We set up a frequency sweep configuration covering 2.40 GHz to 2.45
 	# GHz band with 400 kHz steps.
 	sensor_config_list = sensor.get_config_list()
 
-	sweep_config = sensor_config_list.get_sweep_config(2400e6, 2450e6, 400e3)
+	sweep_config = sensor_config_list.get_sweep_config(868.3e6, 919.0e6, 400e3)
 	if sweep_config is None:
 		raise Exception("Node can not scan specified frequency range.")
 
@@ -58,12 +41,10 @@ def main():
 	# Similarly for spectrum sensing, we setup a task using frequency sweep
 	# we prepared above starting 5 seconds from now and lasting for 30
 	# seconds. Results of the measurement will be stored in slot 4.
-	generator_program = SignalGeneratorProgram(tx_config, now + 10, 20)
 	sensor_program = SpectrumSensorProgram(sweep_config, now + 5, 30, 4)
 
 	# Now actually send instructions over the management network to nodes
 	# in the testbed.
-	generator.program(generator_program)
 	sensor.program(sensor_program)
 
 	# Query the spectrum sensing node and wait until the task has been

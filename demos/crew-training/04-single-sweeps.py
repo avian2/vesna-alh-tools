@@ -18,10 +18,9 @@ def main():
 	# background.
 	logging.basicConfig(level=logging.INFO)
 
-	coor = alh.ALHWeb("https://crn.log-a-tec.eu/communicator", 10001)
+	node = alh.ALHWeb("http://193.2.205.189:9000/communicator", "/dev/ttyS1")
 
 	# Node 19 is equipped with an UHF receiver (TDA18219 on SNE-ISMTV-UHF)
-	node = alh.ALHProxy(coor, 19) 
 
 	# Node 17 is equipped with an 2.4 GHz receiver (CC2500 on SNE-ISMTV-24)
 	#node = alh.ALHProxy(coor, 17)
@@ -34,6 +33,7 @@ def main():
 	# Get a ConfigList object that contains a list of device configurations
 	# supported by the chosen sensor node.
 	config_list = sensor.get_config_list()
+	print config_list
 
 	# ConfigList.get_sweep_config() method will automatically choose
 	# the best device and configuration that can cover the requested
@@ -47,7 +47,8 @@ def main():
 	#
 	# Second example define a sweep starting at 2420 MHz and ending at
 	# 2430 MHz with 400 kHz steps (use with node 17)
-	sweep_config = config_list.get_sweep_config(550e6, 574e6, 1e6)
+	#sweep_config = config_list.get_sweep_config(550e6, 574e6, 1e6)
+	sweep_config = config_list.get_sweep_config(868.3e6, 919.0e6, 400e3)
 	#sweep_config = config_list.get_sweep_config(2420e6, 2430e6, 400e3)
 
 	if sweep_config is None:
