@@ -5,7 +5,6 @@
 # the vesna.alh.spectrumsensor module.
 
 import logging
-import time
 from vesna import alh
 
 from vesna.alh.spectrumsensor import SpectrumSensor
