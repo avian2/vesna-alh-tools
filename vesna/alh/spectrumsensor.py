@@ -146,12 +146,12 @@ class SpectrumSensor:
 		data = response[:-4]
 		crc = response[-4:]
 
-		their_crc = struct.unpack("i", crc[-4:])[0]
+		their_crc = struct.unpack("I", crc[-4:])[0]
 		our_crc = binascii.crc32(data)
 		if their_crc != our_crc:
 			# Firmware versions 2.29 only calculate CRC on the
 			# first half of the response due to a bug
-			our_crc = binascii.crc32(data[:len(data)/2])
+			our_crc = binascii.crc32(data[:len(data)//2])
 			if their_crc != our_crc:
 				raise CRCError
 			else:
@@ -161,7 +161,7 @@ class SpectrumSensor:
 		assert sweep_config.num_channels * 2 == len(data)
 
 		result = []
-		for n in xrange(0, len(data), 2):
+		for n in range(0, len(data), 2):
 			datum = data[n:n+2]
 
 			dbm = struct.unpack("h", datum)[0]*1e-2
@@ -235,7 +235,7 @@ class SpectrumSensor:
 		result = SpectrumSensorResult(program)
 
 		sweep = Sweep()
-		for n in xrange(0, len(data), 2):
+		for n in range(0, len(data), 2):
 			datum = data[n:n+2]
 			if len(datum) != 2:
 				continue
@@ -300,7 +300,7 @@ class SpectrumSensor:
 
 			#print "len", len(chunk_data)
 			
-			their_crc = struct.unpack("i", chunk_data_crc[-4:])[0]
+			their_crc = struct.unpack("I", chunk_data_crc[-4:])[0]
 			our_crc = binascii.crc32(chunk_data)
 
 			if(their_crc != our_crc):
@@ -323,6 +323,7 @@ class SpectrumSensor:
 		config = None
 
 		description = self.alh.get("sensing/deviceConfigList")
+		description = description.decode()
 		configs_left = 0
 		state = 0
 		for line in description.split("\n"):
