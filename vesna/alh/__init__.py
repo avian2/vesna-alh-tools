@@ -6,8 +6,14 @@ import string
 import sys
 import time
 import ssl
-import urllib.request
-import urllib.parse
+
+try:
+	# Python 2.x
+	from urllib import FancyURLopener, urlencode
+except ImportError:
+	# Python 3.x
+	from urllib.request import FancyURLopener
+	from urllib.parse import urlencode
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +40,7 @@ class CRCError(ALHException): pass
 
 class TerminalError(IOError): pass
 
-class ALHURLOpener(urllib.request.FancyURLopener):
+class ALHURLOpener(FancyURLopener):
 	version = "vesna-alh-tools/1.0"
 
 	def __init__(self):
@@ -43,7 +49,7 @@ class ALHURLOpener(urllib.request.FancyURLopener):
 		except AttributeError:
 			context = None
 
-		urllib.request.FancyURLopener.__init__(self, context=context)
+		FancyURLopener.__init__(self, context=context)
 
 	def prompt_user_passwd(self, host, realm):
 
@@ -87,9 +93,7 @@ class ALHURLOpener(urllib.request.FancyURLopener):
 				if match and user and passwd:
 					return (user, passwd)
 
-		return urllib.request.FancyURLopener.prompt_user_passwd(self, host, realm)
-
-urllib._urlopener = ALHURLOpener()
+		return FancyURLopener.prompt_user_passwd(self, host, realm)
 
 class ALHProtocol:
 	"""Base class for an ALH protocol service.
@@ -253,7 +257,7 @@ class ALHWeb(ALHProtocol):
 		self.cluster_id = cluster_id
 
 	def _send(self, url):
-		f = urllib.request.urlopen(url)
+		f = ALHURLOpener.open(url)
 		resp = f.read()
 
 		# Raise an exception if we got anything else than a 200 OK
@@ -291,7 +295,7 @@ class ALHWeb(ALHProtocol):
 				('cluster', str(self.cluster_id)),
 		)
 
-		url = "%s?%s" % (self.base_url, urllib.parse.urlencode(query))
+		url = "%s?%s" % (self.base_url, urlencode(query))
 
 		return self._send_with_retry(url)
 
@@ -306,7 +310,7 @@ class ALHWeb(ALHProtocol):
 				('cluster', str(self.cluster_id)),
 		)
 
-		url = "%s?%s" % (self.base_url, urllib.parse.urlencode(query))
+		url = "%s?%s" % (self.base_url, urlencode(query))
 
 		return self._send_with_retry(url)
 
