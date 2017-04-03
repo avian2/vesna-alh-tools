@@ -83,8 +83,8 @@ class SpectrumSensorResult:
 		sweep_time = 0.0
 
 		next_sweep_i = iter(self.sweeps)
-		next_sweep_i.next()
-		i = itertools.izip_longest(self.sweeps, next_sweep_i)
+		next_sweep_i.__next__()
+		i = itertools.zip_longest(self.sweeps, next_sweep_i)
 
 		for sweepnr, (sweep, next_sweep) in enumerate(i):
 			assert isinstance(sweep, Sweep)
@@ -226,7 +226,7 @@ class SpectrumSensor:
 			return False
 		else:
 			resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
-			return "status=COMPLETE" in resp
+			return "status=COMPLETE" in resp.decode("UTF-8")
 
 	def _decode(self, program, data):
 		num_channels = program.sweep_config.num_channels
@@ -272,16 +272,16 @@ class SpectrumSensor:
 		:return: a :py:class:`SpectrumSensorResult` object
 		"""
 		resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
-		assert "status=COMPLETE" in resp
+		assert "status=COMPLETE" in resp.decode("UTF-8")
 
-		g = re.search("size=([0-9]+)", resp)
+		g = re.search("size=([0-9]+)", resp.decode("UTF-8"))
 		total_size = int(g.group(1))
 
 		#print "total size:", total_size
 
 		p = 0
 		max_read_size = 512
-		data = ""
+		data = bytes()
 
 		while p < total_size:
 			chunk_size = min(max_read_size, total_size - p)
