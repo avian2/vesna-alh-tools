@@ -1,5 +1,10 @@
 import unittest
-import StringIO
+
+try:
+	from StringIO import StringIO
+except ImportError:
+	from io import StringIO
+
 import datetime
 
 import vesna.cdf
@@ -46,7 +51,7 @@ class TestCDFXMLExperiment(unittest.TestCase):
 		d = vesna.cdf.CDFDevice("http://localhost", 10000, 1)
 		e.add_device(d)
 
-		f = StringIO.StringIO()
+		f = StringIO()
 		e.save(f)
 
 		f.seek(0)
@@ -136,7 +141,7 @@ class TestCDFExperiment(unittest.TestCase):
 		vesna.cdf.xml.CDFXMLExperiment(e)
 
 	def test_xml_save_load(self):
-		io = StringIO.StringIO()
+		io = StringIO()
 
 		e = self.create_experiment()
 		e = vesna.cdf.xml.CDFXMLExperiment(e)
