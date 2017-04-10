@@ -237,9 +237,10 @@ class SignalGenerator:
 		config = None
 
 		description = self.alh.get("generator/deviceConfigList")
+		description_ascii = description.decode('ascii')
 		configs_left = 0
 		state = 0
-		for line in description.split("\n"):
+		for line in description_ascii.split("\n"):
 			g = re.match("dev #([0-9]+), (.+), ([0-9]+) configs:", line)
 			if state == 0 and g:
 				device = Device(int(g.group(1)), g.group(2))

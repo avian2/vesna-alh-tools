@@ -5,8 +5,15 @@ import re
 import string
 import sys
 import time
-import urllib
 import ssl
+
+try:
+	# Python 2.x
+	from urllib import FancyURLopener, urlencode
+except ImportError:
+	# Python 3.x
+	from urllib.request import FancyURLopener
+	from urllib.parse import urlencode
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +40,7 @@ class CRCError(ALHException): pass
 
 class TerminalError(IOError): pass
 
-class ALHURLOpener(urllib.FancyURLopener):
+class ALHURLOpener(FancyURLopener):
 	version = "vesna-alh-tools/1.0"
 
 	def __init__(self):
@@ -42,7 +49,7 @@ class ALHURLOpener(urllib.FancyURLopener):
 		except AttributeError:
 			context = None
 
-		urllib.FancyURLopener.__init__(self, context=context)
+		FancyURLopener.__init__(self, context=context)
 
 	def prompt_user_passwd(self, host, realm):
 
@@ -86,9 +93,7 @@ class ALHURLOpener(urllib.FancyURLopener):
 				if match and user and passwd:
 					return (user, passwd)
 
-		return urllib.FancyURLopener.prompt_user_passwd(self, host, realm)
-
-urllib._urlopener = ALHURLOpener()
+		return FancyURLopener.prompt_user_passwd(self, host, realm)
 
 class ALHProtocol:
 	"""Base class for an ALH protocol service.
@@ -129,19 +134,28 @@ class ALHProtocol:
 		if data is not None and len(data) > 4 and all(c in string.printable for c in data):
 			log.info("    DATA: %s" % (data,))
 
+	@staticmethod
+	def _is_printable(resp):
+		try:
+			resp_ascii = resp.decode('ascii')
+		except UnicodeDecodeError:
+			return False
+
+		return all(c in string.printable for c in resp_ascii)
+
 	def _log_response(self, resp):
-		if all(c in string.printable for c in resp):
-			resp_ascii = resp.strip().decode("ascii", "ignore")
+		if self._is_printable(resp):
+			resp_ascii = resp.decode("ascii", "ignore").strip()
 			log.info("response: %s" % (resp_ascii,))
 		else:
 			log.info("unprintable response (%d bytes)" % (len(resp),))
 
 	def _send_with_retry(self, data):
 
-		for retry in xrange(self.RETRIES):
+		for retry in range(self.RETRIES):
 			try:
 				return self._send_with_error(data)
-			except ALHException, e:
+			except ALHException as e:
 				if retry == self.RETRIES - 1:
 					raise e
 				else:
@@ -153,7 +167,7 @@ class ALHProtocol:
 		# a request failed or not, we check if the response
 		# contains any strings that look like error messages.
 
-		r = resp.lower()
+		r = resp.decode('unicode_escape').lower()
 		r = r.replace("bus errors  :", "")
 		r = r.replace("   : 0 (error)", "")
 		if "error" in r or "warning" in r:
@@ -249,9 +263,10 @@ class ALHWeb(ALHProtocol):
 	def __init__(self, base_url, cluster_id):
 		self.base_url = base_url
 		self.cluster_id = cluster_id
+		self.opener = ALHURLOpener()
 
 	def _send(self, url):
-		f = urllib.urlopen(url)
+		f = self.opener.open(url)
 		resp = f.read()
 
 		# Raise an exception if we got anything else than a 200 OK
@@ -289,7 +304,7 @@ class ALHWeb(ALHProtocol):
 				('cluster', str(self.cluster_id)),
 		)
 
-		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
+		url = "%s?%s" % (self.base_url, urlencode(query))
 
 		return self._send_with_retry(url)
 
@@ -304,7 +319,7 @@ class ALHWeb(ALHProtocol):
 				('cluster', str(self.cluster_id)),
 		)
 
-		url = "%s?%s" % (self.base_url, urllib.urlencode(query))
+		url = "%s?%s" % (self.base_url, urlencode(query))
 
 		return self._send_with_retry(url)
 
@@ -336,14 +351,14 @@ class ALHProxy(ALHProtocol):
 	def _get(self, resource, *args):
 		try:
 			return self.alhproxy.get("nodes", "%d/%s?" % (self.addr, resource), *args)
-		except ALHRandomError, e:
+		except ALHRandomError as e:
 			self._check_for_junk_state(str(e))
 			raise
 
 	def _post(self, resource, data, *args):
 		try:
 			response = self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
-		except ALHRandomError, e:
+		except ALHRandomError as e:
 			self._check_for_junk_state(str(e))
 			raise
 

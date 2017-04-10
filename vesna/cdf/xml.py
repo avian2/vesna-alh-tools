@@ -107,7 +107,7 @@ class CDFXMLExperiment:
 		interference = root.find("metaInformation/radioFrequency/interferenceSources")
 		cls._interferers_from_xml(interference, experiment, devices)
 
-		for device in devices.itervalues():
+		for device in devices.values():
 			experiment.add_device(device)
 
 		return experiment

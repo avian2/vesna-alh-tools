@@ -1,5 +1,8 @@
 import binascii
-import itertools
+try:
+	from itertools import zip_longest
+except ImportError:
+	from itertools import izip_longest as zip_longest
 import logging
 import re
 import struct
@@ -83,8 +86,8 @@ class SpectrumSensorResult:
 		sweep_time = 0.0
 
 		next_sweep_i = iter(self.sweeps)
-		next_sweep_i.next()
-		i = itertools.izip_longest(self.sweeps, next_sweep_i)
+		next(next_sweep_i)
+		i = zip_longest(self.sweeps, next_sweep_i)
 
 		for sweepnr, (sweep, next_sweep) in enumerate(i):
 			assert isinstance(sweep, Sweep)
@@ -134,6 +137,11 @@ class SpectrumSensor:
 
 		return sweep_config_list
 
+	@staticmethod
+	def _crc32(data):
+		v= binascii.crc32(data) & 0xffffffff
+		return v
+
 	def _sweep(self, sweep_config):
 		response = self.alh.post("sensing/quickSweepBin",
 				"dev %d conf %d ch %d:%d:%d" % (
@@ -146,12 +154,12 @@ class SpectrumSensor:
 		data = response[:-4]
 		crc = response[-4:]
 
-		their_crc = struct.unpack("i", crc[-4:])[0]
-		our_crc = binascii.crc32(data)
+		their_crc = struct.unpack("<I", crc[-4:])[0]
+		our_crc = self._crc32(data)
 		if their_crc != our_crc:
 			# Firmware versions 2.29 only calculate CRC on the
 			# first half of the response due to a bug
-			our_crc = binascii.crc32(data[:len(data)/2])
+			our_crc = self._crc32(data[:len(data)//2])
 			if their_crc != our_crc:
 				raise CRCError
 			else:
@@ -161,10 +169,10 @@ class SpectrumSensor:
 		assert sweep_config.num_channels * 2 == len(data)
 
 		result = []
-		for n in xrange(0, len(data), 2):
+		for n in range(0, len(data), 2):
 			datum = data[n:n+2]
 
-			dbm = struct.unpack("h", datum)[0]*1e-2
+			dbm = struct.unpack("<h", datum)[0]*1e-2
 			result.append(dbm)
 
 		return result
@@ -226,16 +234,17 @@ class SpectrumSensor:
 			return False
 		else:
 			resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
-			return "status=COMPLETE" in resp
+			return "status=COMPLETE" in resp.decode("UTF-8")
 
-	def _decode(self, program, data):
+	@staticmethod
+	def _decode(program, data):
 		num_channels = program.sweep_config.num_channels
 		line_bytes = num_channels * 2 + 4
 
 		result = SpectrumSensorResult(program)
 
 		sweep = Sweep()
-		for n in xrange(0, len(data), 2):
+		for n in range(0, len(data), 2):
 			datum = data[n:n+2]
 			if len(datum) != 2:
 				continue
@@ -243,7 +252,7 @@ class SpectrumSensor:
 			if n % line_bytes == 0:
 				# got a time-stamp
 				t = data[n:n+4]
-				tt = struct.unpack("<I", t)[0]
+				tt = struct.unpack("<i", t)[0]
 				assert not sweep.data
 				sweep.timestamp = tt * 1e-3
 				continue
@@ -253,7 +262,7 @@ class SpectrumSensor:
 				assert not sweep.data
 				continue
 
-			dbm = struct.unpack("h", datum)[0]*1e-2
+			dbm = struct.unpack("<h", datum)[0]*1e-2
 			sweep.data.append(dbm)
 
 			if len(sweep.data) >= num_channels:
@@ -272,16 +281,18 @@ class SpectrumSensor:
 		:return: a :py:class:`SpectrumSensorResult` object
 		"""
 		resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
-		assert "status=COMPLETE" in resp
+		resp_ascii = resp.decode('ascii')
 
-		g = re.search("size=([0-9]+)", resp)
+		assert "status=COMPLETE" in resp_ascii
+
+		g = re.search("size=([0-9]+)", resp_ascii)
 		total_size = int(g.group(1))
 
 		#print "total size:", total_size
 
 		p = 0
 		max_read_size = 512
-		data = ""
+		data = b""
 
 		while p < total_size:
 			chunk_size = min(max_read_size, total_size - p)
@@ -300,8 +311,8 @@ class SpectrumSensor:
 
 			#print "len", len(chunk_data)
 			
-			their_crc = struct.unpack("i", chunk_data_crc[-4:])[0]
-			our_crc = binascii.crc32(chunk_data)
+			their_crc = struct.unpack("I", chunk_data_crc[-4:])[0]
+			our_crc = self._crc32(chunk_data)
 
 			if(their_crc != our_crc):
 				raise CRCError
@@ -323,6 +334,7 @@ class SpectrumSensor:
 		config = None
 
 		description = self.alh.get("sensing/deviceConfigList")
+		description = description.decode("ascii")
 		configs_left = 0
 		state = 0
 		for line in description.split("\n"):
