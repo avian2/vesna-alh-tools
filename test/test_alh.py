@@ -3,6 +3,9 @@ import unittest
 from vesna.alh import CRCError
 from vesna.alh import signalgenerator
 
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
+
 class TestSignalGenerator(unittest.TestCase):
 
 	def test_get_config_list(self):
@@ -191,6 +194,18 @@ class TestSpectrumSensorResult(unittest.TestCase):
 	def test_get_s_list(self):
 		self.assertEqual( [ 0.0, 1.0 ], self.r.get_s_list() )
 
+from vesna.alh import ALHProtocol
+
+class TestALHProtocol(unittest.TestCase):
+	def test_is_printable_1(self):
+		self.assertEqual(ALHProtocol._is_printable("foo".encode('ascii')), True)
+
+	def test_is_printable_2(self):
+		self.assertEqual(ALHProtocol._is_printable("\x00".encode('ascii')), False)
+
+	def test_is_printable_3(self):
+		self.assertEqual(ALHProtocol._is_printable(u"\x8f".encode('latin2')), False)
+
 try:
 	from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 except ImportError:
@@ -203,6 +218,7 @@ class TestALHWeb(unittest.TestCase):
 	def setUp(self):
 
 		self.last_headers = last_headers = [None]
+		self.srv_response = srv_response = [None]
 
 		class MockHTTPRequestHandler(BaseHTTPRequestHandler):
 			def do_GET(self):
@@ -211,7 +227,7 @@ class TestALHWeb(unittest.TestCase):
 				self.send_response(200)
 				self.end_headers()
 
-				self.wfile.write('bar'.encode('ascii'))
+				self.wfile.write(srv_response[0])
 
 			def log_message(self, format, *args):
 				pass
@@ -224,10 +240,21 @@ class TestALHWeb(unittest.TestCase):
 	def tearDown(self):
 		self.httpd.shutdown()
 		self.t.join()
+		self.httpd.server_close()
 
-	def test_get(self):
+	def test_get_ascii(self):
+		self.srv_response[0] = 'bar'.encode('ascii')
+
 		alh = ALHWeb("http://localhost:12345", "id")
 		r = alh.get("foo")
 
-		self.assertEqual(r, "bar".encode('ascii'))
+		self.assertEqual(r, self.srv_response[0])
 		self.assertIn('alh', self.last_headers[0]['User-Agent'])
+
+	def test_get_bin(self):
+		self.srv_response[0] = '\x00\x01\x02\x04'.encode('ascii')
+
+		alh = ALHWeb("http://localhost:12345", "id")
+		r = alh.get("foo")
+
+		self.assertEqual(r, self.srv_response[0])

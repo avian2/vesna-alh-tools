@@ -134,12 +134,20 @@ class ALHProtocol:
 		if data is not None and len(data) > 4 and all(c in string.printable for c in data):
 			log.info("    DATA: %s" % (data,))
 
-	def _log_response(self, resp):
+	@staticmethod
+	def _is_printable(resp):
 		try:
-			resp.decode('utf-8')
-			resp_ascii = resp.strip().decode("ascii", "ignore")
+			resp_ascii = resp.decode('ascii')
+		except UnicodeDecodeError:
+			return False
+
+		return all(c in string.printable for c in resp_ascii)
+
+	def _log_response(self, resp):
+		if self._is_printable(resp):
+			resp_ascii = resp.decode("ascii", "ignore").strip()
 			log.info("response: %s" % (resp_ascii,))
-		except:
+		else:
 			log.info("unprintable response (%d bytes)" % (len(resp),))
 
 	def _send_with_retry(self, data):
