@@ -157,6 +157,67 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		self.assertRaises(CRCError, s.get_config_list)
 
+	def _get_sc(self):
+		d = Device(0, "test")
+
+		dc = DeviceConfig(0, "foo", d)
+		dc.base = 1000
+		dc.spacing = 1
+		dc.num = 1000
+		dc.time = 1
+
+		sc = SweepConfig(dc, 0, 3, 1)
+
+		return sc
+
+	def test_sweep_1(self):
+		class MockALH(ALHProtocol):
+			def _post(self, resource, data, *args):
+				return b"\x00\x00\x01\x00\x02\x00D\xa4H;"
+
+		alh = MockALH()
+		ss = SpectrumSensor(alh)
+
+		sc = self._get_sc()
+		r = ss.sweep(sc)
+
+		self.assertEqual(r.data, [0., .01, .02])
+
+	def test_sweep_2(self):
+		class MockALH(ALHProtocol):
+			def _post(self, resource, data, *args):
+				# negative CRC
+				return b"\x00\x00\x01\x00\x08\x00\xceL\xa7\xc1"
+
+		alh = MockALH()
+		ss = SpectrumSensor(alh)
+
+		sc = self._get_sc()
+		r = ss.sweep(sc)
+
+		self.assertEqual(r.data, [0., .01, .08])
+
+	def test_retrieve(self):
+		class MockALH(ALHProtocol):
+			def _get(self, resource, *args):
+				if "Info" in resource:
+					return b"status=COMPLETE,size=14"
+				else:
+					return b"\x00\x00\x00\x00\x00\x00\x01\x00\x02\x00\x91m\x00i"
+
+		alh = MockALH()
+		ss = SpectrumSensor(alh)
+
+		sc = self._get_sc()
+		p = SpectrumSensorProgram(sc, 0, 10, 1)
+
+		r = ss.retrieve(p)
+
+		self.assertEqual(len(r.sweeps), 1)
+		self.assertEqual(r.sweeps[0].data, [0., .01, .02])
+		self.assertEqual(r.sweeps[0].timestamp, 0)
+
+
 class TestSpectrumSensorResult(unittest.TestCase):
 	def setUp(self):
 		d = Device(0, "test")
