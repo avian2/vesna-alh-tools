@@ -190,3 +190,44 @@ class TestSpectrumSensorResult(unittest.TestCase):
 
 	def test_get_s_list(self):
 		self.assertEqual( [ 0.0, 1.0 ], self.r.get_s_list() )
+
+try:
+	from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+except ImportError:
+	from http.server import HTTPServer, BaseHTTPRequestHandler
+
+import threading
+from vesna.alh import ALHWeb
+
+class TestALHWeb(unittest.TestCase):
+	def setUp(self):
+
+		self.last_headers = last_headers = [None]
+
+		class MockHTTPRequestHandler(BaseHTTPRequestHandler):
+			def do_GET(self):
+				last_headers[0] = self.headers
+
+				self.send_response(200)
+				self.end_headers()
+
+				self.wfile.write('bar'.encode('ascii'))
+
+			def log_message(self, format, *args):
+				pass
+
+		server_address = ('localhost', 12345)
+		self.httpd = HTTPServer(server_address, MockHTTPRequestHandler)
+		self.t = threading.Thread(target=self.httpd.serve_forever)
+		self.t.start()
+
+	def tearDown(self):
+		self.httpd.shutdown()
+		self.t.join()
+
+	def test_get(self):
+		alh = ALHWeb("http://localhost:12345", "id")
+		r = alh.get("foo")
+
+		self.assertEqual(r, "bar".encode('ascii'))
+		self.assertIn('alh', self.last_headers[0]['User-Agent'])

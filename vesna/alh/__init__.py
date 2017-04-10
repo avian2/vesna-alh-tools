@@ -255,9 +255,10 @@ class ALHWeb(ALHProtocol):
 	def __init__(self, base_url, cluster_id):
 		self.base_url = base_url
 		self.cluster_id = cluster_id
+		self.opener = ALHURLOpener()
 
 	def _send(self, url):
-		f = ALHURLOpener.open(url)
+		f = self.opener.open(url)
 		resp = f.read()
 
 		# Raise an exception if we got anything else than a 200 OK
