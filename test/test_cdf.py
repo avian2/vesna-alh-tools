@@ -1,9 +1,9 @@
 import unittest
 
 try:
-	from StringIO import StringIO
+	from StringIO import StringIO as BytesIO
 except ImportError:
-	from io import StringIO
+	from io import BytesIO
 
 import datetime
 
@@ -141,7 +141,7 @@ class TestCDFExperiment(unittest.TestCase):
 		vesna.cdf.xml.CDFXMLExperiment(e)
 
 	def test_xml_save_load(self):
-		io = StringIO()
+		io = BytesIO()
 
 		e = self.create_experiment()
 		e = vesna.cdf.xml.CDFXMLExperiment(e)

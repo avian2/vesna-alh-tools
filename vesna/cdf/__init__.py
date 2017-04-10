@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 import os.path
+import sys
 import time
 import uuid
 import vesna.alh
@@ -11,10 +12,16 @@ import vesna.alh.common
 
 log = logging.getLogger(__name__)
 
+def isstring(v):
+	if sys.version_info[0] >= 3:
+		return isinstance(v, str)
+	else:
+		return isinstance(v, str) or isinstance(v, unicode)
+
 def force_list(v):
 	if v is None:
 		return []
-	elif isinstance(v, str) or isinstance(v, unicode):
+	elif isstring(v):
 		return [ v ]
 	else:
 		return v

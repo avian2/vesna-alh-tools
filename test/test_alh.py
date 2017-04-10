@@ -102,9 +102,10 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "dev #0, Test, 1 configs:\n" \
+				s =	"dev #0, Test, 1 configs:\n" \
 					"  cfg #0: Test:\n" \
 					"     base: 10 Hz, spacing: 1 Hz, bw: 1 Hz, channels: 10, time: 1 ms"
+				return s.encode('ascii')
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
@@ -118,7 +119,7 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return ""
+				return "".encode('ascii')
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
@@ -132,7 +133,8 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "dev #0, Test, 2 configs:"
+				s = "dev #0, Test, 2 configs:"
+				return s.encode('ascii')
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
@@ -143,8 +145,9 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "dev #0, Test, 1 configs:\n"\
+				s = "dev #0, Test, 1 configs:\n"\
 					"  cfg #0: Test:"
+				return s.encode('ascii')
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
