@@ -53,13 +53,21 @@ HTTP REST endpoint is given or a character device for the serial line.
 Installation
 ============
 
-To install system-wide, run::
+To install system-wide from the package index, run::
 
-   $ pip install .
+   $ pip install vesna-alhtools
 
 This should also automatically install the required Python bindings for VESNA
 spectrum sensor application. More information about it is at:
 https://github.com/avian2/vesna-spectrum-sensor
+
+To install system-wide from source, run::
+
+   $ pip install .
+
+To run tests::
+
+   $ tox
 
 
 Usage
@@ -133,7 +141,7 @@ Run rftest like this::
 License
 =======
 
-Copyright (C) 2016 SensorLab, Jozef Stefan Institute
+Copyright (C) 2017 SensorLab, Jozef Stefan Institute
 http://sensorlab.ijs.si
 
 This program is free software: you can redistribute it and/or modify
