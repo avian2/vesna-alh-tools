@@ -12,9 +12,10 @@ class TestSignalGenerator(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "dev #0, Test, 1 configs:\n" \
+				s = "dev #0, Test, 1 configs:\n" \
 					"  cfg #0: Test:\n" \
 					"     base: 10 Hz, spacing: 1 Hz, bw: 1 Hz, channels: 10, min power: -10 dBm, max power: 0 dBm, time: 1 ms"
+				return s.encode('ascii')
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -28,7 +29,7 @@ class TestSignalGenerator(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return ""
+				return b""
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -42,7 +43,7 @@ class TestSignalGenerator(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "dev #0, Test, 2 configs:"
+				return b"dev #0, Test, 2 configs:"
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -53,8 +54,9 @@ class TestSignalGenerator(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "dev #0, Test, 1 configs:\n"\
+				s = "dev #0, Test, 1 configs:\n"\
 					"  cfg #0: Test:"
+				return s.encode('ascii')
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
