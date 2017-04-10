@@ -18,8 +18,8 @@ class TestSignalGenerator(unittest.TestCase):
 
 		cl = s.get_config_list()
 
-		self.assertEquals(len(cl.devices), 1)
-		self.assertEquals(len(cl.configs), 1)
+		self.assertEqual(len(cl.devices), 1)
+		self.assertEqual(len(cl.configs), 1)
 
 	def test_get_config_list_corrupt_1(self):
 
@@ -32,8 +32,8 @@ class TestSignalGenerator(unittest.TestCase):
 
 		cl = s.get_config_list()
 
-		self.assertEquals(cl.configs, [])
-		self.assertEquals(cl.devices, [])
+		self.assertEqual(cl.configs, [])
+		self.assertEqual(cl.devices, [])
 
 	def test_get_config_list_corrupt_2(self):
 
@@ -82,16 +82,16 @@ class TestGeneratorConfigList(unittest.TestCase):
 		add_dc(3, "bar 2", 2000)
 
 		sc = cl.get_tx_config(1500, 0)
-		self.assertEquals(0, sc.config.id)
+		self.assertEqual(0, sc.config.id)
 
 		sc = cl.get_tx_config(2500, 0)
-		self.assertEquals(1, sc.config.id)
+		self.assertEqual(1, sc.config.id)
 
 		sc = cl.get_tx_config(1500, 0, name="bar")
-		self.assertEquals(2, sc.config.id)
+		self.assertEqual(2, sc.config.id)
 
 		sc = cl.get_tx_config(2500, 0, name="bar")
-		self.assertEquals(3, sc.config.id)
+		self.assertEqual(3, sc.config.id)
 
 from vesna.alh.spectrumsensor import SpectrumSensor, SpectrumSensorResult, SpectrumSensorProgram
 from vesna.spectrumsensor import Device, DeviceConfig, SweepConfig, Sweep
@@ -111,8 +111,8 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		cl = s.get_config_list()
 
-		self.assertEquals(len(cl.devices), 1)
-		self.assertEquals(len(cl.configs), 1)
+		self.assertEqual(len(cl.devices), 1)
+		self.assertEqual(len(cl.configs), 1)
 
 	def test_get_config_list_corrupt_1(self):
 
@@ -125,8 +125,8 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		cl = s.get_config_list()
 
-		self.assertEquals(cl.configs, [])
-		self.assertEquals(cl.devices, [])
+		self.assertEqual(cl.configs, [])
+		self.assertEqual(cl.devices, [])
 
 	def test_get_config_list_corrupt_2(self):
 
