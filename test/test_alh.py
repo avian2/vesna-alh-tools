@@ -217,6 +217,7 @@ class TestSpectrumSensor(unittest.TestCase):
 		self.assertEqual(r.sweeps[0].data, [0., .01, .02])
 		self.assertEqual(r.sweeps[0].timestamp, 0)
 
+import tempfile
 
 class TestSpectrumSensorResult(unittest.TestCase):
 	def setUp(self):
@@ -254,6 +255,24 @@ class TestSpectrumSensorResult(unittest.TestCase):
 
 	def test_get_s_list(self):
 		self.assertEqual( [ 0.0, 1.0 ], self.r.get_s_list() )
+
+	def test_write(self):
+		f = tempfile.NamedTemporaryFile()
+
+		self.r.write(f.name)
+
+		f.seek(0)
+		a = f.read()
+
+		self.assertEqual(a, b"""# t [s]	f [Hz]	P [dBm]
+0.000000	1000.000000	0.000000
+0.333333	1001.000000	1.000000
+0.666667	1002.000000	2.000000
+
+1.000000	1000.000000	3.000000
+1.333333	1001.000000	4.000000
+
+""")
 
 from vesna.alh import ALHProtocol
 

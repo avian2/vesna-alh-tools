@@ -1,5 +1,8 @@
 import binascii
-import itertools
+try:
+	from itertools import zip_longest
+except ImportError:
+	from itertools import izip_longest as zip_longest
 import logging
 import re
 import struct
@@ -83,8 +86,8 @@ class SpectrumSensorResult:
 		sweep_time = 0.0
 
 		next_sweep_i = iter(self.sweeps)
-		next_sweep_i.next()
-		i = itertools.izip_longest(self.sweeps, next_sweep_i)
+		next(next_sweep_i)
+		i = zip_longest(self.sweeps, next_sweep_i)
 
 		for sweepnr, (sweep, next_sweep) in enumerate(i):
 			assert isinstance(sweep, Sweep)
