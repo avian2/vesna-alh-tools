@@ -2,9 +2,22 @@ import unittest
 
 from vesna.alh import CRCError
 from vesna.alh import signalgenerator
+from vesna.alh import cast_args_to_bytes
 
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
+
+class TestMisc(unittest.TestCase):
+	def test_cast_args(self):
+		class Test:
+			@cast_args_to_bytes
+			def get(self2, resource):
+				self.assertIsInstance(resource, bytes)
+
+		t = Test()
+		t.get('test')
+		t.get(b'test')
+		t.get(u'test')
 
 class TestSignalGenerator(unittest.TestCase):
 
@@ -202,7 +215,7 @@ class TestSpectrumSensor(unittest.TestCase):
 	def test_retrieve(self):
 		class MockALH(ALHProtocol):
 			def _get(self, resource, *args):
-				if "Info" in resource:
+				if b"Info" in resource:
 					return b"status=COMPLETE,size=14"
 				else:
 					return b"\x00\x00\x00\x00\x00\x00\x01\x00\x02\x00\x91m\x00i"

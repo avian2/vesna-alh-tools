@@ -17,6 +17,24 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+def cast_to_bytes(s):
+	if isinstance(s, bytes):
+		return s
+	else:
+		return s.encode('ascii')
+
+def cast_args_to_bytes(method):
+	def method_wrapper(self, *args, **kwargs):
+		args2 = [ cast_to_bytes(arg) for arg in args ]
+
+		kwargs2 = {}
+		for name, val in kwargs.items():
+			kwargs2[name] = cast_to_bytes(val)
+
+		return method(self, *args2, **kwargs2)
+
+	return method_wrapper
+
 class ALHException(Exception):
 	"""Base class for errors related to the ALH protocol
 	"""
@@ -104,6 +122,7 @@ class ALHProtocol:
 	"""
 	RETRIES = 5
 
+	@cast_args_to_bytes
 	def get(self, resource, *args):
 		"""Issue a GET request to the service.
 
@@ -116,6 +135,7 @@ class ALHProtocol:
 		"""
 		return self._get(resource, *args)
 
+	@cast_args_to_bytes
 	def post(self, resource, data, *args):
 		"""Issue a POST request to the service
 
