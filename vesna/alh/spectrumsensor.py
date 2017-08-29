@@ -151,8 +151,8 @@ class SpectrumSensor:
 				sweep_config.step_ch,
 				sweep_config.stop_ch))
 
-		data = response[:-4]
-		crc = response[-4:]
+		data = response.content[:-4]
+		crc = response.content[-4:]
 
 		their_crc = struct.unpack("<I", crc[-4:])[0]
 		our_crc = self._crc32(data)
@@ -281,11 +281,10 @@ class SpectrumSensor:
 		:return: a :py:class:`SpectrumSensorResult` object
 		"""
 		resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
-		resp_ascii = resp.decode('ascii')
 
-		assert "status=COMPLETE" in resp_ascii
+		assert "status=COMPLETE" in resp.text
 
-		g = re.search("size=([0-9]+)", resp_ascii)
+		g = re.search("size=([0-9]+)", resp.text)
 		total_size = int(g.group(1))
 
 		#print "total size:", total_size
@@ -307,11 +306,11 @@ class SpectrumSensor:
 			chunk_data_crc = self.alh.get("sensing/slotDataBinary", "id=%d&start=%d&size=%d" % (
 				program.slot_id, p, chunk_size))
 
-			chunk_data = chunk_data_crc[:-4]
+			chunk_data = chunk_data_crc.content[:-4]
 
 			#print "len", len(chunk_data)
 			
-			their_crc = struct.unpack("I", chunk_data_crc[-4:])[0]
+			their_crc = struct.unpack("I", chunk_data_crc.content[-4:])[0]
 			our_crc = self._crc32(chunk_data)
 
 			if(their_crc != our_crc):

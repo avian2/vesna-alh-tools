@@ -35,6 +35,15 @@ def cast_args_to_bytes(method):
 
 	return method_wrapper
 
+class ALHResponse(object):
+	def __init__(self, content):
+		assert isinstance(content, bytes)
+		self.text = content.decode('ascii', errors='replace').replace(u'\ufffd', '?')
+		self.content = content
+
+	def __str__(self):
+		return self.text
+
 class ALHException(Exception):
 	"""Base class for errors related to the ALH protocol
 	"""
@@ -133,7 +142,8 @@ class ALHProtocol:
 
 		:return: the string reply from the resource handler
 		"""
-		return self._get(resource, *args)
+		rv = self._get(resource, *args)
+		return ALHResponse(rv)
 
 	@cast_args_to_bytes
 	def post(self, resource, data, *args):
@@ -147,7 +157,8 @@ class ALHProtocol:
 
 		:return: the string reply from the resource handler
 		"""
-		return self._post(resource, data, *args)
+		rv = self._post(resource, data, *args)
+		return ALHResponse(rv)
 
 	def _log_request(self, method, resource, args, data=None):
 		log.info("%8s: %s?%s" % (method, resource, "".join(args)))

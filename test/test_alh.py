@@ -343,13 +343,13 @@ class TestALHWeb(unittest.TestCase):
 		alh = ALHWeb("http://localhost:12345", "id")
 		r = alh.get("foo")
 
-		self.assertEqual(r, self.srv_response[0])
+		self.assertEqual(r.text, 'bar')
 		self.assertIn('alh', self.last_headers[0]['User-Agent'])
 
 	def test_get_bin(self):
-		self.srv_response[0] = '\x00\x01\x02\x04'.encode('ascii')
+		self.srv_response[0] = b'\x00\x01\x02\x04\xfe\xff'
 
 		alh = ALHWeb("http://localhost:12345", "id")
 		r = alh.get("foo")
 
-		self.assertEqual(r, self.srv_response[0])
+		self.assertEqual(r.content, self.srv_response[0])
