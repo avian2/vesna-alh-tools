@@ -6,6 +6,7 @@ import string
 import sys
 import time
 import ssl
+from functools import wraps
 
 try:
 	# Python 2.x
@@ -24,6 +25,7 @@ def cast_to_bytes(s):
 		return s.encode('ascii')
 
 def cast_args_to_bytes(method):
+	@wraps(method)
 	def method_wrapper(self, *args, **kwargs):
 		args2 = [ cast_to_bytes(arg) for arg in args ]
 
@@ -36,6 +38,21 @@ def cast_args_to_bytes(method):
 	return method_wrapper
 
 class ALHResponse(object):
+	"""This class represents the response of a resource handler.
+
+	The ALH protocol does not define the encoding of strings passed thorugh
+	it. It can be used for binary data as well. In practice however, most
+	strings are 7-bit ASCII. Hence this class provides ASCII-decoded form
+	of the response for convenience, as well as the undecoded binary.
+
+	.. py:attribute:: text
+
+	   Text form of the response (ASCII).
+
+	.. py:attribute:: content
+
+	   Binary form of the response (:py:class:`bytes` object on Python 3).
+	"""
 	def __init__(self, content):
 		assert isinstance(content, bytes)
 		self.text = content.decode('ascii', errors='replace').replace(u'\ufffd', '?')
@@ -146,7 +163,7 @@ class ALHProtocol:
 		:param resource: resource to issue request to
 		:param args: arbitrary string arguments for the request
 
-		:return: the string reply from the resource handler
+		:return: :py:class:`vesna.alh.ALHResponse` object
 		"""
 		rv = self._get(resource, *args)
 		return ALHResponse(rv)
@@ -161,7 +178,7 @@ class ALHProtocol:
 		:param data: POST data to attach to the request
 		:param args: arbitrary string arguments for the request
 
-		:return: the string reply from the resource handler
+		:return: :py:class:`vesna.alh.ALHResponse` object
 		"""
 		rv = self._post(resource, data, *args)
 		return ALHResponse(rv)
@@ -223,7 +240,8 @@ class ALHTerminal(ALHProtocol):
 	This implementation is used for testing and debugging when a sensor
 	node is connected directly to a computer over a serial line.
 
-	:param f: path to the character device of the terminal
+	:param f: path to the character device of the terminal (usually an
+	          instance of the :py:class:`serial.Serial` class)
 	"""
 	RESPONSE_TERMINATOR = b"\r\nOK\r\n"
 

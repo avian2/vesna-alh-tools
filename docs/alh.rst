@@ -9,6 +9,10 @@ the ALH protocol.
 ALH protocol implementations
 ----------------------------
 
+.. autoclass:: vesna.alh.ALHTerminal
+   :members:
+   :inherited-members:
+
 .. autoclass:: vesna.alh.ALHWeb
    :members:
    :inherited-members:
@@ -16,6 +20,12 @@ ALH protocol implementations
 .. autoclass:: vesna.alh.ALHProxy
    :members:
    :inherited-members:
+
+Response class
+--------------
+
+.. autoclass:: vesna.alh.ALHResponse
+   :members:
 
 Exception classes
 -----------------
