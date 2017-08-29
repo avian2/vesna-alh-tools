@@ -44,6 +44,9 @@ class ALHResponse(object):
 	def __str__(self):
 		return self.text
 
+	def __repr__(self):
+		return "ALHResponse(%r)" % (self.content,)
+
 class ALHException(Exception):
 	"""Base class for errors related to the ALH protocol
 	"""
