@@ -44,6 +44,9 @@ class ALHResponse(object):
 	def __str__(self):
 		return self.text
 
+	def __bytes__(Self):
+		return self.content
+
 	def __repr__(self):
 		return "ALHResponse(%r)" % (self.content,)
 
@@ -59,10 +62,10 @@ class ALHProtocolException(ALHException):
 		super(Exception, self).__init__(msg)
 
 class JunkInput(ALHProtocolException):
-	TERMINATOR = "JUNK-INPUT\r\n"
+	TERMINATOR = b"JUNK-INPUT"
 
 class CorruptedData(ALHProtocolException): 
-	TERMINATOR = "CORRUPTED-DATA\r\n"
+	TERMINATOR = b"CORRUPTED-DATA"
 
 class ALHRandomError(ALHException): pass
 
@@ -164,9 +167,15 @@ class ALHProtocol:
 		return ALHResponse(rv)
 
 	def _log_request(self, method, resource, args, data=None):
-		log.info("%8s: %s?%s" % (method, resource, "".join(args)))
-		if data is not None and len(data) > 4 and all(c in string.printable for c in data):
-			log.info("    DATA: %s" % (data,))
+		msg = b"%s?%s" % (resource, b"".join(args))
+		log.info("%8s: %s" % (method, msg.decode("ascii", "ignore")))
+
+		if data is not None and len(data) > 4:
+			if self._is_printable(data):
+				data_ascii = data.decode("ascii", "ignore")
+			else:
+				data_ascii = "(unprintable)"
+			log.info("    DATA: %s" % (data_ascii,))
 
 	@staticmethod
 	def _is_printable(resp):
@@ -216,7 +225,7 @@ class ALHTerminal(ALHProtocol):
 
 	:param f: path to the character device of the terminal
 	"""
-	RESPONSE_TERMINATOR = "\r\nOK\r\n"
+	RESPONSE_TERMINATOR = b"\r\nOK\r\n"
 
 	def __init__(self, f):
 		self.f = f
@@ -224,7 +233,7 @@ class ALHTerminal(ALHProtocol):
 	def _send(self, data):
 		self.f.write(data)
 
-		resp = ""
+		resp = b""
 		while not resp.endswith(self.RESPONSE_TERMINATOR):
 			d = self.f.read()
 			if d:
@@ -235,17 +244,17 @@ class ALHTerminal(ALHProtocol):
 		return resp[:-len(self.RESPONSE_TERMINATOR)]
 
 	def _recover(self):
-		self._send("\r\n" * 5)
+		self._send(b"\r\n" * 5)
 
 	def _crc(self, data):
 		return binascii.crc32(data)
 
 	def _send_with_error(self, data):
 		resp = self._send(data)
-		if resp.endswith("JUNK-INPUT\r\n"):
+		if resp.endswith(JunkInput.TERMINATOR):
 			self._recover()
 			raise JunkInput(resp)
-		if resp.endswith("CORRUPTED-DATA\r\n"):
+		if resp.endswith(CorruptedData.TERMINATOR):
 			raise CorruptedData(resp)
 
 		self._check_for_sneaky_error(resp)
@@ -256,20 +265,20 @@ class ALHTerminal(ALHProtocol):
 	def _get(self, resource, *args):
 		self._log_request("GET", resource, args)
 
-		arg = "".join(args)
-		return self._send_with_retry("get %s?%s\r\n" % (resource, arg))
+		arg = b"".join(args)
+		return self._send_with_retry(b"get %s?%s\r\n" % (resource, arg))
 
 	def _post(self, resource, data, *args):
 		self._log_request("POST", resource, args, data)
 
-		arg = "".join(args)
+		arg = b"".join(args)
 
-		req = "post %s?%s\r\nlength=%d\r\n%s\r\n" % (
+		req = b"post %s?%s\r\nlength=%d\r\n%s\r\n" % (
 				resource, arg, len(data), data)
 
 		crc = self._crc(req)
 
-		req += "crc=%d\r\n" % crc
+		req += b"crc=%d\r\n" % crc
 
 		return self._send_with_retry(req)
 

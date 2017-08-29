@@ -353,3 +353,67 @@ class TestALHWeb(unittest.TestCase):
 		r = alh.get("foo")
 
 		self.assertEqual(r.content, self.srv_response[0])
+
+from vesna.alh import ALHTerminal
+
+class TestALHTerminal(unittest.TestCase):
+	def setUp(self):
+
+		class MockSerial(object):
+			def __init__(self):
+				self.writes = []
+				self.reads = []
+
+			def read(self):
+				r = self.reads[0]
+				self.reads = self.reads[1:]
+
+				return r
+
+			def write(self, d):
+				assert isinstance(d, bytes)
+				self.writes.append(d)
+
+		self.serial = MockSerial()
+		self.alh = ALHTerminal(self.serial)
+
+	def test_get_ascii(self):
+		self.serial.reads.append(b"bar\r\nOK\r\n")
+
+		r = self.alh.get("foo", "arg1")
+		self.assertEqual(r.text, "bar")
+
+		self.assertEqual(self.serial.writes, [b"get foo?arg1\r\n"])
+
+	def test_post_ascii(self):
+		self.serial.reads.append(b"bar\r\nOK\r\n")
+
+		r = self.alh.post("foo", "datadata", "arg1")
+		self.assertEqual(r.text, "bar")
+
+		self.assertEqual(self.serial.writes,
+				[b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n"])
+
+	def test_post_ascii_retry(self):
+		self.serial.reads.append(b"CORRUPTED-DATA\r\nOK\r\n")
+		self.serial.reads.append(b"bar\r\nOK\r\n")
+
+		r = self.alh.post("foo", "datadata", "arg1")
+		self.assertEqual(r.text, "bar")
+
+		self.assertEqual(self.serial.writes,
+				[b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n",
+				 b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n"])
+
+	def test_post_ascii_recover(self):
+		self.serial.reads.append(b"JUNK-INPUT\r\nOK\r\n")
+		self.serial.reads.append(b"\r\nOK\r\n")
+		self.serial.reads.append(b"bar\r\nOK\r\n")
+
+		r = self.alh.post("foo", "datadata", "arg1")
+		self.assertEqual(r.text, "bar")
+
+		self.assertEqual(self.serial.writes,
+				[b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n",
+				 b"\r\n\r\n\r\n\r\n\r\n",
+				 b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n"])
