@@ -59,7 +59,7 @@ fbuptime.min 0
 	LABEL = "fbuptime"
 
 	def fetch(self):
-		uptime = float(self.node.alh.get("fritzbox/uptime").strip())
+		uptime = float(self.node.alh.get("fritzbox/uptime").text.strip())
 		return uptime / 3600.0
 
 class NodeUptime(NodeResource):
@@ -75,7 +75,7 @@ uptime.min 0
 	LABEL = "uptime"
 
 	def fetch(self):
-		uptime = float(self.node.alh.get("uptime").strip())
+		uptime = float(self.node.alh.get("uptime").text.strip())
 
 		# old version don't count uptime from 0
 		old_uptime_offset = 1325376000.0
@@ -104,7 +104,7 @@ mcutemp.label mcutemp
 	LABEL = "mcutemp"
 
 	def fetch(self):
-		s = self.node.alh.get("sensor/mcuTemp").strip()
+		s = self.node.alh.get("sensor/mcuTemp").text.strip()
 		g = re.search("MCU temperature is ([0-9.]+) C", s)
 		return float(g.group(1))
 
@@ -123,7 +123,7 @@ vcc.min 0
 	LABEL = "vcc"
 
 	def fetch(self):
-		resp = self.node.alh.get("voltage/vcc").strip()
+		resp = self.node.alh.get("voltage/vcc").text.strip()
 		g = re.match("^([0-9]+) mV\s*$", resp)
 		return float(g.group(1)) * 1e-3
 
@@ -143,7 +143,7 @@ zbcrc.label CRC32
 		end   = 0x11200
 
 		resp = self.node.alh.get("debug/zigbitflashcrc",
-				"start=%d&end=%d" % (start, end))
+				"start=%d&end=%d" % (start, end)).text
 		crc32 = int(resp, 16)
 
 		return crc32
@@ -200,7 +200,7 @@ tdatimeouts.min 0
 """
 
 	def fetch(self):
-		resp = self.node.alh.get("sensing/deviceStatus").strip()
+		resp = self.node.alh.get("sensing/deviceStatus").text.strip()
 
 		g = re.search("Temperature +: +([-0-9]+) C", resp)
 		temp = g.group(1) if g else 'U'
@@ -264,9 +264,9 @@ timeouts.min 0
 	LABEL = "radio"
 
 	def fetch(self):
-		stats = self.node.alh.get("radio/statistics").strip()
+		stats = self.node.alh.get("radio/statistics").text.strip()
 		# [ tx, rx, overflows, timeouts ]
-		stats = map(int, filter(lambda x:x.isdigit(), stats.split()))
+		stats = list(map(int, filter(lambda x:x.isdigit(), stats.split())))
 		if len(stats) >= 4:
 			return stats
 
@@ -305,7 +305,7 @@ class MonitoredNode:
 	def _ping(self):
 		try:
 			start_time = time.time()
-			resp = self.alh.get("hello")
+			resp = self.alh.get("hello").text
 			self.ping_time = time.time() - start_time
 		except ALHException:
 			log.exception("pinging node failed")
@@ -328,7 +328,7 @@ class MonitoredNode:
 		if not self.is_at_least("2.16"):
 			return
 
-		resp = self.alh.get("radio/neighbors")
+		resp = self.alh.get("radio/neighbors").text
 
 		for line in resp.split("\r\n"):
 			fields = line.split(" | ")
@@ -366,9 +366,9 @@ class MonitoredNode:
 
 		def str_to_f(version):
 			if version is None:
-				return None
+				return []
 			else:
-				return map(int, version.split("."))
+				return list(map(int, version.split(".")))
 
 		return str_to_f(self.version) >= str_to_f(min_version)
 
@@ -412,7 +412,7 @@ def do_munin(options, visited):
 			outf.write(resource.MUNIN_CONFIG)
 			outf.close()
 
-			for current_id, nodeinfo in visited.iteritems():
+			for current_id, nodeinfo in visited.items():
 				resource = nodeinfo.resources[label]
 				if resource.get() is not None:
 					path = "%s/node_%d_%s" % (options.output, current_id, label)
@@ -427,9 +427,9 @@ def do_munin(options, visited):
 			os.unlink(path)
 
 def do_stats(options, visited):
-	visited = sorted((id, info) for id, info in visited.iteritems())
+	visited = sorted((id, info) for id, info in visited.items())
 
-	print "ID\tApplication         \tVersion\tUptime"
+	print("ID\tApplication         \tVersion\tUptime")
 	for id, nodeinfo in visited:
 		uptime_days = nodeinfo.resources['uptime'].get()
 		if uptime_days is not None:
@@ -444,7 +444,7 @@ def do_stats(options, visited):
 			uptime,
 		]
 
-		print '\t'.join(map(str, row))
+		print('\t'.join(map(str, row)))
 
 def main():
 	parser = OptionParser(usage="%prog [options]")
@@ -483,7 +483,7 @@ def main():
 			outf = sys.stdout
 
 		outf.write("digraph net {\n")
-		for current_id, nodeinfo in visited.iteritems():
+		for current_id, nodeinfo in visited.items():
 			if nodeinfo.neighbors:
 				for next_id in nodeinfo.neighbors:
 					outf.write("n%d -> n%d\n" % (current_id, next_id))
