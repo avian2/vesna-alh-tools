@@ -15,6 +15,9 @@ try:
 except ImportError:
 	# Python 3.x
 	from urllib.parse import urlparse
+	import urllib3
+
+	urllib3.disable_warnings()
 
 log = logging.getLogger(__name__)
 
