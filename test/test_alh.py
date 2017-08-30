@@ -312,11 +312,13 @@ from vesna.alh import ALHWeb
 class TestALHWeb(unittest.TestCase):
 	def setUp(self):
 
+		self.last_path = last_path = [None]
 		self.last_headers = last_headers = [None]
 		self.srv_response = srv_response = [None]
 
 		class MockHTTPRequestHandler(BaseHTTPRequestHandler):
 			def do_GET(self):
+				last_path[0] = self.path
 				last_headers[0] = self.headers
 
 				self.send_response(200)
@@ -344,6 +346,7 @@ class TestALHWeb(unittest.TestCase):
 		r = alh.get("foo")
 
 		self.assertEqual(r.text, 'bar')
+		self.assertEqual('/?method=get&resource=foo%3F&cluster=id', self.last_path[0])
 		self.assertIn('alh', self.last_headers[0]['User-Agent'])
 
 	def test_get_bin(self):

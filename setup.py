@@ -25,7 +25,7 @@ setup(name='vesna-alhtools',
 	      'scripts/alh-endpoint-server',
 	      'scripts/alh-measure-rssi' ],
 
-      install_requires = [ 'vesna-spectrumsensor', 'numpy', 'python-dateutil', 'lxml' ],
+      install_requires = [ 'vesna-spectrumsensor', 'numpy', 'python-dateutil', 'lxml', 'requests' ],
 
       test_suite = 'test',
 )

@@ -6,15 +6,15 @@ import string
 import sys
 import time
 import ssl
+import requests
 from functools import wraps
 
 try:
 	# Python 2.x
-	from urllib import FancyURLopener, urlencode
+	from urlparse import urlparse
 except ImportError:
 	# Python 3.x
-	from urllib.request import FancyURLopener
-	from urllib.parse import urlencode
+	from urllib.parse import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -89,61 +89,6 @@ class ALHRandomError(ALHException): pass
 class CRCError(ALHException): pass
 
 class TerminalError(IOError): pass
-
-class ALHURLOpener(FancyURLopener):
-	version = "vesna-alh-tools/1.0"
-
-	def __init__(self):
-		try:
-			context = ssl._create_unverified_context()
-		except AttributeError:
-			context = None
-
-		FancyURLopener.__init__(self, context=context)
-
-	def prompt_user_passwd(self, host, realm):
-
-		paths = [
-				'alhrc',
-				'/etc/alhrc',
-			]
-
-		home = os.environ.get('HOME')
-		if home is not None:
-			paths.append(os.path.join(home, '.alhrc'))
-
-		for path in paths:
-			try:
-				f = open(path)
-			except IOError:
-				continue
-
-			match = False
-			user = None
-			passwd = None
-
-			for line in f:
-				if line.startswith('#'):
-					continue
-
-				try:
-					key, value = line.strip().split()
-				except ValueError:
-					continue
-
-				if (key == 'Host'):
-					match = (value == host)
-					user = None
-					passwd = None
-				elif match and (key == 'User'):
-					user = value
-				elif match and (key == 'Password'):
-					passwd = value
-
-				if match and user and passwd:
-					return (user, passwd)
-
-		return FancyURLopener.prompt_user_passwd(self, host, realm)
 
 class ALHProtocol:
 	"""Base class for an ALH protocol service.
@@ -321,27 +266,79 @@ class ALHWeb(ALHProtocol):
 	:param cluster_id: numerical cluster id
 	"""
 
+	UA = "vesna-alh-tools/1.1"
+
 	def __init__(self, base_url, cluster_id):
 		self.base_url = base_url
 		self.cluster_id = cluster_id
-		self.opener = ALHURLOpener()
 
-	def _send(self, url):
-		f = self.opener.open(url)
-		resp = f.read()
+		o = urlparse(base_url)
+		self.host = o.netloc
+
+	def _get_passwd(self):
+
+		paths = [
+				'alhrc',
+				'/etc/alhrc',
+			]
+
+		home = os.environ.get('HOME')
+		if home is not None:
+			paths.append(os.path.join(home, '.alhrc'))
+
+		for path in paths:
+			try:
+				with open(path) as f:
+					match = False
+					user = None
+					passwd = None
+
+					for line in f:
+						if line.startswith('#'):
+							continue
+
+						try:
+							key, value = line.strip().split()
+						except ValueError:
+							continue
+
+						if (key == 'Host'):
+							match = (value == self.host)
+							user = None
+							passwd = None
+						elif match and (key == 'User'):
+							user = value
+						elif match and (key == 'Password'):
+							passwd = value
+
+						if match and user and passwd:
+							return (user, passwd)
+
+			except IOError:
+				pass
+
+		return None
+
+	def _send(self, params):
+		r = requests.get(	self.base_url,
+					params=params,
+					headers={'user-agent': self.UA},
+					verify=False,
+					auth=self._get_passwd(),
+				)
 
 		# Raise an exception if we got anything else than a 200 OK
-		if f.getcode() != 200:
-			raise TerminalError(resp)
+		if r.status_code != 200:
+			raise TerminalError(r.text)
 
-		return resp
+		return r.content
 
-	def _send_with_error(self, url):
+	def _send_with_error(self, params):
 		# loop until communication channel is free and our request
 		# goes through.
 		time_start = time.time()
 		while True:
-			resp = self._send(url)
+			resp = self._send(params)
 			if resp != "ERROR: Communication in progress":
 				break
 
@@ -358,31 +355,27 @@ class ALHWeb(ALHProtocol):
 	def _get(self, resource, *args):
 		self._log_request("GET", resource, args)
 
-		arg = "".join(args)
-		query = (
+		arg = b"".join(args)
+		params = (
 				('method', 'get'),
-				('resource', '%s?%s' % (resource, arg)),
+				('resource', b'%s?%s' % (resource, arg)),
 				('cluster', str(self.cluster_id)),
 		)
 
-		url = "%s?%s" % (self.base_url, urlencode(query))
-
-		return self._send_with_retry(url)
+		return self._send_with_retry(params)
 
 	def _post(self, resource, data, *args):
 		self._log_request("POST", resource, args, data)
 
-		arg = "".join(args)
-		query = (
+		arg = b"".join(args)
+		params = (
 				('method', 'post'),
-				('resource', '%s?%s' % (resource, arg)),
-				('content', '%s' % (data,)),
+				('resource', b'%s?%s' % (resource, arg)),
+				('content', data),
 				('cluster', str(self.cluster_id)),
 		)
 
-		url = "%s?%s" % (self.base_url, urlencode(query))
-
-		return self._send_with_retry(url)
+		return self._send_with_retry(params)
 
 class ALHProxy(ALHProtocol):
 	"""ALH protocol implementation through an ALH proxy.
@@ -411,14 +404,16 @@ class ALHProxy(ALHProtocol):
 
 	def _get(self, resource, *args):
 		try:
-			return self.alhproxy.get("nodes", "%d/%s?" % (self.addr, resource), *args)
+			response = self.alhproxy.get("nodes", b"%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError as e:
 			self._check_for_junk_state(str(e))
 			raise
 
+		return response.content
+
 	def _post(self, resource, data, *args):
 		try:
-			response = self.alhproxy.post("nodes", data, "%d/%s?" % (self.addr, resource), *args)
+			response = self.alhproxy.post("nodes", data, b"%d/%s?" % (self.addr, resource), *args)
 		except ALHRandomError as e:
 			self._check_for_junk_state(str(e))
 			raise
@@ -428,5 +423,5 @@ class ALHProxy(ALHProtocol):
 
 		# Clean it up here, so that responses via proxy are identical
 		# to responses with direct connection.
-		response = re.sub("^Node #%d return;" % (self.addr,), "", response)
-		return response
+		content = re.sub(b"^Node #%d return;" % (self.addr,), b"", response.content)
+		return content
