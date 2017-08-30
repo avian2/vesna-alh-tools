@@ -18,6 +18,6 @@ def main():
 
 	# This should print out something similar to
 	# "Hello Application version 2.16"
-	print coor.get("hello")
+	print(coor.get("hello"))
 
 main()

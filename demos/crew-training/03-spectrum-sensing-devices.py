@@ -17,7 +17,7 @@ def main():
 	for addr in [8, 25, 19]:
 		node = alh.ALHProxy(coor, addr)
 
-		print "Spectrum sensing configurations for node %d:" % (addr,)
-		print node.get("sensing/deviceConfigList")
+		print("Spectrum sensing configurations for node %d:" % (addr,))
+		print(node.get("sensing/deviceConfigList"))
 
 main()

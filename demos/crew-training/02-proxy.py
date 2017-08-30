@@ -23,6 +23,6 @@ def main():
 	# Read out the value from the integrated temperature sensor.
 	# Temperature sensors are usually not calibrated in the Log-a-tec
 	# testbed, so this value might be significantly off.
-	print node19.get("sensor/mcuTemp")
+	print(node19.get("sensor/mcuTemp"))
 
 main()
