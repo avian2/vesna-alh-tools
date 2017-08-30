@@ -82,10 +82,10 @@ class ALHProtocolException(ALHException):
 		super(Exception, self).__init__(msg)
 
 class JunkInput(ALHProtocolException):
-	TERMINATOR = b"JUNK-INPUT"
+	TERMINATOR = b"JUNK-INPUT\r\n"
 
 class CorruptedData(ALHProtocolException): 
-	TERMINATOR = b"CORRUPTED-DATA"
+	TERMINATOR = b"CORRUPTED-DATA\r\n"
 
 class ALHRandomError(ALHException): pass
 

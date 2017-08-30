@@ -398,7 +398,7 @@ class TestALHTerminal(unittest.TestCase):
 				[b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n"])
 
 	def test_post_ascii_retry(self):
-		self.serial.reads.append(b"CORRUPTED-DATA\r\nOK\r\n")
+		self.serial.reads.append(b"CORRUPTED-DATA\r\n\r\nOK\r\n")
 		self.serial.reads.append(b"bar\r\nOK\r\n")
 
 		r = self.alh.post("foo", "datadata", "arg1")
@@ -409,7 +409,7 @@ class TestALHTerminal(unittest.TestCase):
 				 b"post foo?arg1\r\nlength=8\r\ndatadata\r\ncrc=417676333\r\n"])
 
 	def test_post_ascii_recover(self):
-		self.serial.reads.append(b"JUNK-INPUT\r\nOK\r\n")
+		self.serial.reads.append(b"JUNK-INPUT\r\n\r\nOK\r\n")
 		self.serial.reads.append(b"\r\nOK\r\n")
 		self.serial.reads.append(b"bar\r\nOK\r\n")
 
