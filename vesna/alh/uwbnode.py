@@ -130,17 +130,16 @@ class UWBNode:
         """ read the ID of UWB node """
         response = self.alh.get("node_id")
 
-        return int(response.content)
+        return int(response.text)
 
     def get_last_range_data(self):
         """ return measurements data """
         response = self.alh.get("measurement")
-        data_str = str(response.content)
-        data = dataLineToDictionary(data_str)
-        idx = data_str.find("DATALEN{")
+        data = dataLineToDictionary(response.text)
+        idx = response.text.find("DATALEN{")
         if idx >= 0:
             #datalen = int(response[idx+8:idx+12])
-            data['CIR'] = parseCIR2Complex(data_str[idx+14:-1])
+            data['CIR'] = parseCIR2Complex(response.text[idx+14:-1])
 
         return data
 
@@ -148,4 +147,4 @@ class UWBNode:
         """ check if measurement data is ready for transfer """
         response = self.alh.get("pending")
 
-        return int(response.content)
+        return int(response.text)
