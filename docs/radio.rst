@@ -49,3 +49,9 @@ Signal generation
 
 .. autoclass:: vesna.alh.signalgenerator.TxConfig
    :members:
+
+UWB node
+--------
+
+.. autoclass:: vesna.alh.uwbnode.UWBNode
+   :members:
