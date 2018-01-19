@@ -17,3 +17,5 @@ dist
 docs/_build
 venv/*
 *.idea/*
+.tox
+.coverage
