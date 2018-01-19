@@ -15,3 +15,5 @@ data
 dist
 *.egg-info
 docs/_build
+venv/*
+*.idea/*
