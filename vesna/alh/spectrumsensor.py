@@ -333,7 +333,7 @@ class SpectrumSensor:
 		config = None
 
 		description = self.alh.get("sensing/deviceConfigList")
-		description = description.decode("ascii")
+		description = description.text
 		configs_left = 0
 		state = 0
 		for line in description.split("\n"):
