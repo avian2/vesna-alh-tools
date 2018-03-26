@@ -1,6 +1,7 @@
 import unittest
 
 from vesna.alh import CRCError
+from vesna.alh import ALHResponse
 from vesna.alh import signalgenerator
 from vesna.alh import cast_args_to_bytes
 
@@ -28,7 +29,7 @@ class TestSignalGenerator(unittest.TestCase):
 				s = "dev #0, Test, 1 configs:\n" \
 					"  cfg #0: Test:\n" \
 					"     base: 10 Hz, spacing: 1 Hz, bw: 1 Hz, channels: 10, min power: -10 dBm, max power: 0 dBm, time: 1 ms"
-				return s.encode('ascii')
+				return ALHResponse(s.encode("ascii"))
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -42,7 +43,7 @@ class TestSignalGenerator(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return b""
+				return ALHResponse(b"")
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -56,7 +57,7 @@ class TestSignalGenerator(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return b"dev #0, Test, 2 configs:"
+				return ALHResponse(b"dev #0, Test, 2 configs:")
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -69,7 +70,7 @@ class TestSignalGenerator(unittest.TestCase):
 			def get(self, resource):
 				s = "dev #0, Test, 1 configs:\n"\
 					"  cfg #0: Test:"
-				return s.encode('ascii')
+				return ALHResponse(s.encode('ascii'))
 
 		alh = TestALH()
 		s = signalgenerator.SignalGenerator(alh)
@@ -123,7 +124,7 @@ class TestSpectrumSensor(unittest.TestCase):
 				s =	"dev #0, Test, 1 configs:\n" \
 					"  cfg #0: Test:\n" \
 					"     base: 10 Hz, spacing: 1 Hz, bw: 1 Hz, channels: 10, time: 1 ms"
-				return s.encode('ascii')
+				return ALHResponse(s.encode('ascii'))
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
@@ -137,7 +138,7 @@ class TestSpectrumSensor(unittest.TestCase):
 
 		class TestALH:
 			def get(self, resource):
-				return "".encode('ascii')
+				return ALHResponse("".encode('ascii'))
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
@@ -152,7 +153,7 @@ class TestSpectrumSensor(unittest.TestCase):
 		class TestALH:
 			def get(self, resource):
 				s = "dev #0, Test, 2 configs:"
-				return s.encode('ascii')
+				return ALHResponse(s.encode('ascii'))
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
@@ -165,7 +166,7 @@ class TestSpectrumSensor(unittest.TestCase):
 			def get(self, resource):
 				s = "dev #0, Test, 1 configs:\n"\
 					"  cfg #0: Test:"
-				return s.encode('ascii')
+				return ALHResponse(s.encode('ascii'))
 
 		alh = TestALH()
 		s = SpectrumSensor(alh)
