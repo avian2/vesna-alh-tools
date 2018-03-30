@@ -1,6 +1,11 @@
 import math
 import numpy as np
 
+def _ord(x):
+	if isinstance(x, int):
+		return x
+	else:
+		return ord(x)
 
 def parseCIR2Complex(data):
 	"""make a list of strings with complex cir points
@@ -11,11 +16,11 @@ def parseCIR2Complex(data):
 	tempcpx = None
 	cpx_data = []
 	for x in range(length):
-		tempreal = ((ord(data[(x * 4)])) << 8) + (ord(data[(x * 4) + 1]))
+		tempreal = ((_ord(data[(x * 4)])) << 8) + (_ord(data[(x * 4) + 1]))
 		# convert unsigned integer to signed integer
 		if (tempreal & 0x8000):
 			tempreal = -0x10000 + tempreal
-		tempcpx = ((ord(data[(x * 4) + 2])) << 8) + (ord(data[(x * 4) + 3]))
+		tempcpx = ((_ord(data[(x * 4) + 2])) << 8) + (_ord(data[(x * 4) + 3]))
 		if (tempcpx & 0x8000):
 			tempcpx = -0x10000 + tempcpx
 		cpx_data.append(str(complex(tempreal, tempcpx)))
