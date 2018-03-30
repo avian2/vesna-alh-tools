@@ -141,7 +141,7 @@ Run rftest like this::
 License
 =======
 
-Copyright (C) 2017 SensorLab, Jozef Stefan Institute
+Copyright (C) 2018 SensorLab, Jozef Stefan Institute
 http://sensorlab.ijs.si
 
 This program is free software: you can redistribute it and/or modify
