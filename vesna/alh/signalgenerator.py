@@ -237,7 +237,7 @@ class SignalGenerator:
 		config = None
 
 		description = self.alh.get("generator/deviceConfigList")
-		description_ascii = description.decode('ascii')
+		description_ascii = description.text
 		configs_left = 0
 		state = 0
 		for line in description_ascii.split("\n"):

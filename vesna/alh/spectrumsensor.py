@@ -234,7 +234,7 @@ class SpectrumSensor:
 			return False
 		else:
 			resp = self.alh.get("sensing/slotInformation", "id=%d" % (program.slot_id,))
-			return "status=COMPLETE" in resp.decode("UTF-8")
+			return "status=COMPLETE" in resp.text
 
 	@staticmethod
 	def _decode(program, data):
@@ -333,7 +333,7 @@ class SpectrumSensor:
 		config = None
 
 		description = self.alh.get("sensing/deviceConfigList")
-		description = description.decode("ascii")
+		description = description.text
 		configs_left = 0
 		state = 0
 		for line in description.split("\n"):
